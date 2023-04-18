@@ -71,10 +71,10 @@
         "title": "Broca",
         "width": 600,
         "visible": false,
-        "hiddenTitle": true,
-        "decorations": false,
-        "focus": false,
-        "transparent": true
+        "hiddenTitle": false,
+        "decorations": true,
+        "focus": true,
+        "transparent": false
       }
     ]
   }

@@ -3,8 +3,8 @@
     windows_subsystem = "windows"
 )]
 
-use tauri::{Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, CustomMenuItem};
-use tauri_plugin_positioner::{Position, WindowExt};
+use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
+use tauri_plugin_positioner::Position;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -12,11 +12,21 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+mod win_ext;
+
+use win_ext::WindowExt;
 
 fn main() {
     let quit = CustomMenuItem::new("quit".to_string(), "Quit").accelerator("Cmd+Q");
     let system_tray_menu = SystemTrayMenu::new().add_item(quit);
-    let mut app =tauri::Builder::default()
+    let mut app = tauri::Builder::default()
+        .setup(|app| {
+            let window = app.get_window("main").unwrap();
+            // window.open_devtools();
+            window.set_transparent_titlebar(true);
+
+            Ok(())
+        })
         .plugin(tauri_plugin_positioner::init())
         .system_tray(SystemTray::new().with_menu(system_tray_menu))
         .on_system_tray_event(|app, event| {
@@ -29,9 +39,9 @@ fn main() {
                 } => {
                     let window = app.get_window("main").unwrap();
                     // use TrayCenter as initial window position
-                    let _ = window.move_window(Position::TrayCenter);
+                    //  let _ = window.move_window(Position::TrayCenter);
                     if window.is_visible().unwrap() {
-                        window.hide().unwrap();
+                   //     window.hide().unwrap();
                     } else {
                         window.show().unwrap();
                         window.set_focus().unwrap();
@@ -45,17 +55,18 @@ fn main() {
                 },
                 _ => {}
             }
-        }).on_window_event(|event| match event.event() {
+        })
+        .on_window_event(|event| match event.event() {
             tauri::WindowEvent::Focused(is_focused) => {
                 // detect click outside of the focused window and hide the app
                 if !is_focused {
-                    event.window().hide().unwrap();
+                  //  event.window().hide().unwrap();
                 }
             }
             _ => {}
         })
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
-       app.set_activation_policy(tauri::ActivationPolicy::Accessory);
-       app.run(|_app_handle, _event| {});
+    app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+    app.run(|_app_handle, _event| {});
 }

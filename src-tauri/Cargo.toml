@@ -18,6 +18,7 @@ serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.2", features = ["macos-private-api", "shell-open", "system-tray"] }
 tauri-plugin-positioner = { version = "1.0", features = ["system-tray"] }
 directories = "4.0"
+cocoa = "0.24"
 
 [features]
 # by default Tauri runs in production mode
