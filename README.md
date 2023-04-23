@@ -14,10 +14,11 @@ And the name? Broca is named after the [brain region](https://www.hopkinsmedicin
 
 ## Installation
 
-Prebuilt installers are available on the release page.
+Prebuilt installers are available on the [release page](https://github.com/shi-yan/broca/releases) (MacOS only for now).
 
 ## Todos
 * More languages
 * Pronunciation support 
 * Click to load more example sentences
 * GPT Usage Gauge
+* Linux / Win support
