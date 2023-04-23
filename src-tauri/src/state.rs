@@ -56,6 +56,12 @@ impl State {
             (),
         )
         .unwrap();
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS timestamp_index ON vocabulary(timestamp);",
+            (),
+        )
+        .unwrap();
     }
 
     pub fn delete_word(&self, query: &str)  -> Result<String>  {
@@ -172,7 +178,7 @@ impl State {
         let mut conn = Connection::open(workspace_path.join("cache.db")).unwrap();
 
         let mut stmt = conn
-            .prepare("SELECT query FROM vocabulary WHERE query LIKE :pattern;")
+            .prepare("SELECT query FROM vocabulary WHERE query LIKE :pattern ORDER BY timestamp DESC;")
             .unwrap();
         let word_iter = stmt
             .query_map(&[(":pattern", format!("%{}%", query).as_str())], |row| {
@@ -193,7 +199,7 @@ impl State {
         let mut conn = Connection::open(workspace_path.join("cache.db")).unwrap();
 
         let mut stmt = conn
-            .prepare("SELECT query FROM vocabulary;")
+            .prepare("SELECT query FROM vocabulary ORDER BY timestamp DESC;")
             .unwrap();
         let word_iter = stmt
             .query_map((), |row| {
@@ -220,7 +226,6 @@ impl State {
 
         let mut conn = Connection::open(workspace_path.join("cache.db")).unwrap();
 
-        let mut results = Vec::<String>::new();
 
         for entry in glob(
             workspace_vocabulary_path_buf
@@ -244,13 +249,13 @@ impl State {
                     let mut buffered_reader = BufReader::new(file);
                     let e: Entry = serde_json::from_reader(buffered_reader).unwrap();
                     conn.execute("INSERT OR REPLACE INTO vocabulary(query, content, timestamp) SELECT ?1, ?2, ?3 WHERE NOT EXISTS (SELECT * FROM vocabulary WHERE query = ?4 AND timestamp >= ?5);", (e.query.clone(), serde_json::to_string(&e).unwrap(), seconds, e.query.clone(), seconds)).unwrap();
-                    results.push(e.query);
+                    //results.push(e.query);
                 }
                 Err(e) => println!("{:?}", e),
             }
         }
-
-        Ok(results)
+        let  results = self.fetch_all_words();
+        results
     }
 
     pub fn first_time_setup(

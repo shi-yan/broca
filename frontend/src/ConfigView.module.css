@@ -34,3 +34,13 @@
 .ConfigView input:focus {
     outline: none;
 }
+
+.Error {
+    padding: 9px;
+    background-color: brown;
+    color:antiquewhite;
+    font-size: 16px;
+    border-radius: 6px;
+    border-width: 0;
+    border-style: none;
+}
