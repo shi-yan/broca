@@ -3,7 +3,7 @@ import { tauri_invoke, tauri_dialog } from './tauri';
 
 const AppContext = createContext();
 
-export function AppContextProvider(props) {  
+export function AppContextProvider(props) {
   const [configured, setConfigured] = createSignal(false);
   const [allItems, setAllItems] = createSignal([]);
   const [detail, setDetail] = createSignal({});
@@ -11,20 +11,27 @@ export function AppContextProvider(props) {
   async function narrowDown(query) {
     console.log(query);
     try {
-      const words = await tauri_invoke('query_words', {query: query});
-      setAllItems(words);
+      if (query) {
+        const words = await tauri_invoke('query_words', { query: query });
+        setAllItems(words);
+      }
+      else {
+        const words = await tauri_invoke('fetch_all_words');
+        setAllItems(words);
+      }
     }
-    catch(err) {
+    catch (err) {
       console.log(err);
     }
   }
 
+
   onMount(async () => {
-    
+
   });
 
   return (
-    <AppContext.Provider value={{configured:{configured, setConfigured}, narrowDown, allItems, setAllItems, detail:{detail, setDetail}}}>
+    <AppContext.Provider value={{ configured: { configured, setConfigured }, narrowDown, allItems, setAllItems, detail: { detail, setDetail } }}>
       {props.children}
     </AppContext.Provider>
   );

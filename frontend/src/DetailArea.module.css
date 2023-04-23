@@ -5,6 +5,7 @@
     height: 100%;
     position: relative;
     box-sizing: border-box;
+    padding: 10px;
 }
 
 .Word{
@@ -13,7 +14,8 @@
 
 .POS {
     background-color:burlywood;
-    padding: 4px;
+    padding: 6px;
+    border-radius: 6px;
 }
 
 .Meaning {

@@ -58,6 +58,24 @@ impl State {
         .unwrap();
     }
 
+    pub fn delete_word(&self, query: &str)  -> Result<String>  {
+        let workspace_path = Path::new(self.workspace_path.as_str());
+
+        let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
+
+        let mut conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+
+        conn.execute("DELETE FROM vocabulary WHERE query = ?1;", &[query]).unwrap();
+
+        let slug = slugify!(query, separator = "_");
+        let mut new_filename = format!("{}.json", slug.as_str());
+
+        let path = workspace_vocabulary_path_buf.join(&new_filename);
+        std::fs::remove_file(path.as_path()).unwrap();
+
+        Ok(new_filename)
+    }
+
     pub async fn search(&self, query: &str) -> Result<String>{
         let workspace_path = Path::new(self.workspace_path.as_str());
 
@@ -158,6 +176,27 @@ impl State {
             .unwrap();
         let word_iter = stmt
             .query_map(&[(":pattern", format!("%{}%", query).as_str())], |row| {
+                row.get(0)
+            })
+            .unwrap();
+
+        let mut result = Vec::<String>::new();
+        for word in word_iter {
+            result.push(word.unwrap());
+        }
+
+        Ok(result)
+    }
+
+    pub fn fetch_all_words(&self) -> Result<Vec<String>> {
+        let workspace_path = Path::new(self.workspace_path.as_str());
+        let mut conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+
+        let mut stmt = conn
+            .prepare("SELECT query FROM vocabulary;")
+            .unwrap();
+        let word_iter = stmt
+            .query_map((), |row| {
                 row.get(0)
             })
             .unwrap();

@@ -6,18 +6,18 @@ import ConfigView from './ConfigView';
 import SearchArea from './SearchArea';
 import { createSignal, Show, Switch, Match, onMount } from "solid-js";
 import { useAppContext } from './AppContext';
-import { tauri_invoke , tauri_dialog } from './tauri';
+import { tauri_invoke, tauri_dialog } from './tauri';
 
 function App() {
 
-  const {configured, narrowDown} = useAppContext();
+  const { configured, narrowDown } = useAppContext();
 
   onMount(async () => {
     try {
-      console.log("calling load_config");
-      const workspaceData = await tauri_invoke('load_config');
-      console.log("load_config called", workspaceData);
-      configured.setConfigured(true);
+         console.log("calling load_config");
+         const workspaceData = await tauri_invoke('load_config');
+         console.log("load_config called", workspaceData);
+         configured.setConfigured(true);
     }
     catch (err) {
       console.log(err);
@@ -26,22 +26,26 @@ function App() {
   });
 
   return (
-
-      <Switch >
-        <Match when={configured.configured()}>
-          <div class={styles.App}>
-            <div class={styles.TopArea}>
-              <DetailArea class={styles.DetailArea}></DetailArea>
-              <VocabularyArea class={styles.VocabularyArea}></VocabularyArea>
-            </div>
-            <SearchArea></SearchArea>
+    <Switch >
+      <Match when={configured.configured()}>
+        <div class={styles.App}>
+          <div data-tauri-drag-region class={styles.Title}>Broca</div>
+          <div class={styles.TopArea}>
+            <DetailArea class={styles.DetailArea}></DetailArea>
+            <VocabularyArea class={styles.VocabularyArea}></VocabularyArea>
           </div>
-        </Match>
-        <Match when={!configured.configured()}>
-          <ConfigView></ConfigView>
-        </Match>
-      </Switch>
-
+          <SearchArea></SearchArea>
+        </div>
+      </Match>
+      <Match when={!configured.configured()}>
+        <div class={styles.App}>
+          <div data-tauri-drag-region class={styles.Title}>Broca</div>
+          <div class={styles.TopArea}>
+            <ConfigView></ConfigView>
+          </div>
+          </div>
+      </Match>
+    </Switch>
   );
 }
 

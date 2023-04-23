@@ -42,11 +42,12 @@ function ConfigView(prop) {
 
     return (
         <div class={styles.ConfigView}>
+            <h3>First time setup</h3>
             <p>{vocabularyFolder()}</p>
-            <button onclick={onFolderSelected}>Pick a vocabulary directory</button>
-            <label for="apikey">OpenAI API Key</label>
+            <button class={styles.Button} onclick={onFolderSelected}>Pick a vocabulary directory</button>
+            <label for="apikey">OpenAI API Key:</label>
             <input ref={openaiInput} id="apikey" type="text" />
-            <button onClick={onApply}>Apply</button>
+            <button class={styles.Button} onClick={onApply}>Apply</button>
 
         </div>
     );

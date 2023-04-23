@@ -47,6 +47,19 @@
   flex-grow: 1;
   flex-shrink: 1;
   position: relative;
-  height: calc(100% - 40px);
+  height: calc(100% - 92px);
   box-sizing: border-box;
 }
+
+.Title {
+  height: 32px;
+  box-sizing: border-box;
+  flex-grow: 0;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 18px;
+  font-family: 'Helvetica Neue';
+  padding: 4px;
+  cursor: pointer;
+}
+

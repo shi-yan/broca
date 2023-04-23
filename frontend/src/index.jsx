@@ -12,4 +12,10 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   );
 }
 
-render(() =>    <AppContextProvider> <App /> </AppContextProvider>, root);
+function Broca() {
+  return (<AppContextProvider>
+    <App />
+  </AppContextProvider>)
+}
+
+render(Broca, root);

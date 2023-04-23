@@ -25,6 +25,10 @@ async function invoke(cmd, payload) {
             return '';
         case 'search':
             return '';
+        case 'delete_word':
+            return '';
+        case 'fetch_all_words':
+            return '';
         default:
             console.error("unimplemented ", cmd);
             break;

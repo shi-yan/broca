@@ -2,9 +2,11 @@
     display: flex;
     flex-grow: 0;
     flex-shrink: 0;
-    height: 40px;
+    height: 60px;
+    padding: 10px;
     width: 100%;
     position: relative;
+    box-sizing: border-box;
 }
 
 .SearchArea input {

@@ -89,6 +89,27 @@ fn search(state: tauri::State<Mutex<state::State>>, query: &str) -> Result<Strin
     //Err("Can't initialize workspace.".to_string())
 }
 
+#[tauri::command]
+fn delete_word(
+    state: tauri::State<Mutex<state::State>>,
+    query: &str,
+) -> Result<String, String> {
+    if let Ok(content) = state.lock().unwrap().delete_word(query) {
+        return Ok(content);
+    }
+    Err("Can't initialize workspace.".to_string())
+}
+
+#[tauri::command]
+fn fetch_all_words(
+    state: tauri::State<Mutex<state::State>>
+) -> Result<Vec<String>, String> {
+    if let Ok(content) = state.lock().unwrap().fetch_all_words() {
+        return Ok(content);
+    }
+    Err("Can't initialize workspace.".to_string())
+}
+
  fn main() {
 
     tauri::Builder::default()
@@ -108,7 +129,9 @@ fn search(state: tauri::State<Mutex<state::State>>, query: &str) -> Result<Strin
             scan_vocabulary,
             load_word,
             query_words,
-            search
+            search,
+            delete_word,
+            fetch_all_words
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -9,10 +9,16 @@ function SearchArea(prop) {
     const { configured, narrowDown, allItems, setAllItems, detail } = useAppContext();
     const [isLoading, setIsLoading] = createSignal(false);
 
+    let timeout = null;
 
     function onInput(e) {
+        if (timeout) {
+            clearTimeout(timeout);
+        }
         const input = e.target.value;
-        narrowDown(input);
+
+        timeout = setTimeout((
+        ) => { narrowDown(input); }, 100);
     }
 
     async function onKeyDown(e) {
