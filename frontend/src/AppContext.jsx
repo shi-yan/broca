@@ -1,35 +1,30 @@
 import { createSignal, createContext, useContext, onMount } from "solid-js";
+import { tauri_invoke, tauri_dialog } from './tauri';
 
 const AppContext = createContext();
 
 export function AppContextProvider(props) {  
   const [configured, setConfigured] = createSignal(false);
   const [allItems, setAllItems] = createSignal([]);
+  const [detail, setDetail] = createSignal({});
 
-  function narrowDown(query) {
-    let count = 100;
-    if (query) {
-      count = Math.floor( 100 / query.length);
+  async function narrowDown(query) {
+    console.log(query);
+    try {
+      const words = await tauri_invoke('query_words', {query: query});
+      setAllItems(words);
     }
-    if (count <= 0) {
-      count = 1;
+    catch(err) {
+      console.log(err);
     }
-
-    let debugWords = [];
-
-    for(let i =0;i<count;i++) {
-      debugWords.push((query?query:'word') + ' ' + i);
-    }
-
-    setAllItems(debugWords);
   }
 
   onMount(async () => {
-    narrowDown();
+    
   });
 
   return (
-    <AppContext.Provider value={{configured:{configured, setConfigured}, narrowDown, allItems}}>
+    <AppContext.Provider value={{configured:{configured, setConfigured}, narrowDown, allItems, setAllItems, detail:{detail, setDetail}}}>
       {props.children}
     </AppContext.Provider>
   );

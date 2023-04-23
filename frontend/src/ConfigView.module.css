@@ -1,1 +1,4 @@
-.ConfigView{}
+.ConfigView{
+    display: flex;
+    flex-direction: column;
+}

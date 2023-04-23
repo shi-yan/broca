@@ -1,14 +1,15 @@
 import logo from './logo.svg';
 import styles from './VocabularyArea.module.css';
-import { createSignal, Show, Switch, Match, For, onMount,createEffect } from "solid-js";
+import { createSignal, Show, Switch, Match, For, onMount,createEffect, catchError } from "solid-js";
 import { useAppContext } from './AppContext';
+import { tauri_invoke } from './tauri';
 
 function VocabularyArea() {
   let viewport;
   let dummyContainer;
   let visibleList;
 
-  const {configured, narrowDown, allItems} = useAppContext();
+  const {configured, narrowDown, allItems, setAllItems, detail} = useAppContext();
 
   const itemHeight = 32;
   const nodePadding = 10;
@@ -43,8 +44,29 @@ function VocabularyArea() {
 
 
   onMount(async () => {
-
+    try {
+      const words = await tauri_invoke('scan_vocabulary');
+      console.log("scan vocabulary", words);
+      setAllItems(words);
+    }
+    catch(err) {
+      console.log(err);
+    }
   });
+
+  async function onLoadWord(query)  {
+    console.log(query);
+    try {
+      const word = await tauri_invoke('load_word', {query: query});
+      const parsed = JSON.parse(word);
+      console.log(parsed);
+      
+      detail.setDetail(parsed);
+    }
+    catch(err) {
+      console.log(err);
+    }
+  };
 
   return (
     <div class={styles.VocabularyArea}>
@@ -58,7 +80,7 @@ function VocabularyArea() {
           }}>
             <For each={visibleItems()}>{(item, i) =>
               <div class={styles.Item}>
-                {i() + 1}: {item}
+                <a href="#" onClick={(e) => {onLoadWord(item);}}>{item}</a>
               </div>
             }</For>
           </div>

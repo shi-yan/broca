@@ -1,5 +1,21 @@
 .DetailArea{
     flex-grow: 1;
     flex-shrink: 1;
-    
+    overflow-y: scroll;
+    height: 100%;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.Word{
+    font-size: 24px;
+}
+
+.POS {
+    background-color:burlywood;
+    padding: 4px;
+}
+
+.Meaning {
+    padding: 10px;
 }

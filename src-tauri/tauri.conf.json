@@ -67,9 +67,9 @@
       {
         "fullscreen": false,
         "height": 600,
-        "resizable": false,
+        "resizable": true,
         "title": "Broca",
-        "width": 600,
+        "width": 800,
         "hiddenTitle": false,
         "decorations": true,
         "focus": true,

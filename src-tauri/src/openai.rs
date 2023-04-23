@@ -137,9 +137,7 @@ fn assemble_query(query: &str) -> String {
     res
 }
 
-pub async fn search(query: &str) -> Result<entry::Entry> {
-    let auth_token = "";
-    println!("Auth token: {}", auth_token);
+pub async fn search(query: &str, auth_token:&str) -> Result<entry::Entry> {
     let bearer_auth = format!("Bearer {}", auth_token);
 
     let data = assemble_query(query);

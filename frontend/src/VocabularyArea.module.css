@@ -1,7 +1,7 @@
 .VocabularyArea {
     flex-grow: 0;
     flex-shrink: 0;
-    width: 320px;
+    width: 180px;
     position: relative;
 }
 
@@ -10,14 +10,23 @@
     overflow-y: scroll;
     height: 100%;
     position: relative;
+    box-sizing: border-box;
 }
 
 .Dummy {
     position: absolute;
-    top:0;
+    top: 0;
     left: 0;
 }
 
 .Item {
     height: 32px;
+}
+
+.Item a {
+    color: black;
+}
+
+.Item a:visited {
+    color: black;
 }

@@ -6,3 +6,27 @@
     width: 100%;
     position: relative;
 }
+
+.SearchArea input {
+    width: 100%;
+    background-color: burlywood;
+    border-radius: 10px;
+    border-width: 0;
+    font-size: 12px;
+}
+
+.SearchArea input:focus {
+    outline: none;
+}
+
+.Loading {
+    width:320px;
+    height:180px;
+    border-radius:20px;
+    overflow:hidden;
+    top:calc(50% - 90px);
+    left:calc(50% - 160px);
+    position:fixed;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+}
+
