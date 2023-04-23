@@ -292,6 +292,13 @@ impl State {
                 mkdir_p(&workspace_path).unwrap();
             }
 
+            let gitignore_path = workspace_path.join(".gitignore");
+
+            if !gitignore_path.exists() {
+                let mut gitignore_file = File::create(gitignore_path)?;
+                gitignore_file.write_all(String::from("cache.db").as_bytes())?;
+            }
+
             let workspace_vocabulary_path_buf =
                 PathBuf::new().join(workspace_path).join("vocabulary");
 
