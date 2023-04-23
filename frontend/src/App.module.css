@@ -1,5 +1,13 @@
 .App {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /*height: 100%;*/
+  position: relative;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 20px;
 }
 
 .logo {
@@ -30,4 +38,13 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.TopArea{
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  flex-grow: 1;
+  flex-shrink: 1;
+  position: relative;
 }

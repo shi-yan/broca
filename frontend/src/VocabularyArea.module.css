@@ -1,0 +1,23 @@
+.VocabularyArea {
+    flex-grow: 0;
+    flex-shrink: 0;
+    width: 320px;
+    position: relative;
+}
+
+.Viewport {
+    overflow-x: hidden;
+    overflow-y: scroll;
+    height: 100%;
+    position: relative;
+}
+
+.Dummy {
+    position: absolute;
+    top:0;
+    left: 0;
+}
+
+.Item {
+    height: 32px;
+}

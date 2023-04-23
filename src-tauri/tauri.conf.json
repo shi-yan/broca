@@ -70,7 +70,6 @@
         "resizable": false,
         "title": "Broca",
         "width": 600,
-        "visible": false,
         "hiddenTitle": false,
         "decorations": true,
         "focus": true,

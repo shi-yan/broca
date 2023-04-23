@@ -7,9 +7,10 @@ export default defineConfig({
     port: 3000,
   },
   build: {
-    target: 'esnext',
     outDir: '../src',
     minify: false,
-    cssMinify: false
-  },
+    cssMinify: false,
+    target: 'esnext',
+    emptyOutDir: true
+  }
 });
