@@ -6,11 +6,6 @@
 use std::sync::Mutex;
 use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
 use tauri_plugin_positioner::Position;
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 use tokio::runtime::Runtime;
 
 use std::rc::Rc;
@@ -22,11 +17,14 @@ use win_ext::WindowExt;
 
 #[tauri::command]
 fn load_config(state: tauri::State<Mutex<state::State>>) -> Result<String, String> {
-    if let Ok(content) = state.lock().unwrap().load_config() {
-        return Ok(content);
+    match state.lock().unwrap().load_config() {
+        Ok(content) => {
+            return Ok(content);
+        }
+        Err(message) => {
+            return Err(message.to_string());
+        }
     }
-
-    Err("Failed to load config".to_string())
 }
 
 #[tauri::command]
@@ -36,30 +34,38 @@ fn first_time_setup(
     openai_token: &str,
 ) -> Result<String, String> {
     println!("{} {}", workspace_path, openai_token);
-    if let Ok(content) = state
+    match state
         .lock()
         .unwrap()
         .first_time_setup(workspace_path, openai_token)
     {
-        return Ok(content);
+        Ok(content) => return Ok(content),
+        Err(message) => return Err(message.to_string()),
     }
-    Err("Can't initialize workspace.".to_string())
 }
 
 #[tauri::command]
 fn scan_vocabulary(state: tauri::State<Mutex<state::State>>) -> Result<Vec<String>, String> {
-    if let Ok(content) = state.lock().unwrap().scan_vocabulary() {
-        return Ok(content);
+    match state.lock().unwrap().scan_vocabulary() {
+        Ok(content) => {
+            return Ok(content);
+        }
+        Err(message) => {
+            return Err(message.to_string());
+        }
     }
-    Err("Can't initialize workspace.".to_string())
 }
 
 #[tauri::command]
 fn load_word(state: tauri::State<Mutex<state::State>>, query: &str) -> Result<String, String> {
-    if let Ok(content) = state.lock().unwrap().load_word(query) {
-        return Ok(content);
+    match state.lock().unwrap().load_word(query) {
+        Ok(content) => {
+            return Ok(content);
+        }
+        Err(message) => {
+            return Err(message.to_string());
+        }
     }
-    Err("Can't initialize workspace.".to_string())
 }
 
 #[tauri::command]
@@ -67,33 +73,32 @@ fn query_words(
     state: tauri::State<Mutex<state::State>>,
     query: &str,
 ) -> Result<Vec<String>, String> {
-    if let Ok(content) = state.lock().unwrap().query_words(query) {
-        return Ok(content);
+    match state.lock().unwrap().query_words(query) {
+        Ok(content) => {
+            return Ok(content);
+        }
+        Err(message) => {
+            return Err(message.to_string());
+        }
     }
-    Err("Can't initialize workspace.".to_string())
 }
 
 #[tauri::command]
 fn search(state: tauri::State<Mutex<state::State>>, query: &str) -> Result<String, String> {
-    let rt  = Runtime::new().unwrap();
+    let rt = Runtime::new().unwrap();
 
-   let r = rt.block_on(async {
-        return state.lock().unwrap().search(query).await;
-    });
-    //println!("{}",r.unwrap());
-    return Ok(r.unwrap());
-    /*if let Ok(content) = state.lock().unwrap().search(query).await {
-        return Ok(Rc::new(content.into()));
-    }*/
-
-    //Err("Can't initialize workspace.".to_string())
+    match  rt.block_on( state.lock().unwrap().search(query)) {
+        Ok(content) => {
+            return Ok(content);
+        }
+        Err(message) => {
+            return Err(message.to_string());
+        }
+    }
 }
 
 #[tauri::command]
-fn delete_word(
-    state: tauri::State<Mutex<state::State>>,
-    query: &str,
-) -> Result<String, String> {
+fn delete_word(state: tauri::State<Mutex<state::State>>, query: &str) -> Result<String, String> {
     if let Ok(content) = state.lock().unwrap().delete_word(query) {
         return Ok(content);
     }
@@ -101,17 +106,14 @@ fn delete_word(
 }
 
 #[tauri::command]
-fn fetch_all_words(
-    state: tauri::State<Mutex<state::State>>
-) -> Result<Vec<String>, String> {
+fn fetch_all_words(state: tauri::State<Mutex<state::State>>) -> Result<Vec<String>, String> {
     if let Ok(content) = state.lock().unwrap().fetch_all_words() {
         return Ok(content);
     }
     Err("Can't initialize workspace.".to_string())
 }
 
- fn main() {
-
+fn main() {
     tauri::Builder::default()
         .manage(Mutex::<state::State>::new(state::State::new()))
         .setup(|app| {
@@ -123,7 +125,6 @@ fn fetch_all_words(
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
             load_config,
             first_time_setup,
             scan_vocabulary,

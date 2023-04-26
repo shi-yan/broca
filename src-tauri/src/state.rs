@@ -91,21 +91,21 @@ impl State {
             mkdir_p(&workspace_vocabulary_path_buf).unwrap();
         }
 
-        let res = crate::openai::search(query.to_lowercase().as_str(), self.openai_token.as_str()).await.unwrap();
+        let res = crate::openai::search(query.to_lowercase().as_str(), self.openai_token.as_str()).await?;
 
         let slug = slugify!(query, separator = "_");
 
-        let mut new_filename = format!("{}.json", slug.as_str());
+        let new_filename = format!("{}.json", slug.as_str());
 
-        let serialized = serde_json::to_string_pretty(&res).unwrap();
+        let serialized = serde_json::to_string_pretty(&res)?;
 
         let path = workspace_vocabulary_path_buf.join(&new_filename);
 
-        let mut file = File::create(path.as_path()).unwrap();
+        let mut file = File::create(path.as_path())?;
 
-        file.write_all(serialized.as_bytes()).unwrap();
+        file.write_all(serialized.as_bytes())?;
 
-        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db"))?;
 
         let seconds = std::fs::metadata(path.as_path())
             .unwrap()

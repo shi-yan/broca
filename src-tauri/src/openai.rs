@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Result};
-use std::result::Result::Ok;
 use reqwest;
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
+use std::result::Result::Ok;
 
 use crate::entry::{self, Meanings};
 
@@ -137,7 +137,7 @@ fn assemble_query(query: &str) -> String {
     res
 }
 
-pub async fn search(query: &str, auth_token:&str) -> Result<entry::Entry> {
+pub async fn search(query: &str, auth_token: &str) -> Result<entry::Entry> {
     let bearer_auth = format!("Bearer {}", auth_token);
 
     let data = assemble_query(query);
@@ -162,32 +162,45 @@ pub async fn search(query: &str, auth_token:&str) -> Result<entry::Entry> {
                     println!("🔥 Success!");
                     println!("💬 Response: {}", parsed.choices[0].message.content);
 
-                    let meanings: entry::Meanings = serde_json::from_str(&parsed.choices[0].message.content).unwrap();
-
-                    println!("{:?}", meanings);
-
-                    return Ok(entry::Entry {
-                        query: query.to_string(),
-                        meanings: meanings
-                    })
+                    match serde_json::from_str(&parsed.choices[0].message.content) {
+                        Ok(meanings) => {
+                            println!("{:?}", meanings);
+                            return Ok(entry::Entry {
+                                query: query.to_string(),
+                                meanings: meanings,
+                            });
+                        }
+                        Err(message) => {
+                            return Err(anyhow!(format!(
+                                "{} : {}",
+                                message.to_string(),
+                                parsed.choices[0].message.content
+                            )));
+                        }
+                    }
                 }
-                Err(_) => println!("🛑 Hm, the response didn't match the shape we expected."),
+                Err(_) => {
+                    println!("🛑 Hm, the response didn't match the shape we expected.");
+                    return Err(anyhow!(
+                        "🛑 Hm, the response didn't match the shape we expected."
+                    ));
+                }
             };
         }
         reqwest::StatusCode::UNAUTHORIZED => {
             println!("🛑 Status: UNAUTHORIZED - Need to grab a new token");
+            return Err(anyhow!("Status: UNAUTHORIZED - Need to grab a new token"));
         }
         reqwest::StatusCode::TOO_MANY_REQUESTS => {
             println!("🛑 Status: 429 - Too many requests");
+            return Err(anyhow!("Status: 429 - Too many requests, this may happend if your API token was generated not too long ago. Please try again later."));
         }
         other => {
-            panic!(
+            return Err(anyhow!(format!(
                 "🛑 Uh oh! Something unexpected happened: [{:#?} {:?}]",
                 other,
                 response.text().await
-            );
+            )));
         }
-       
     };
-    Err(anyhow!("No config directory found."))
 }
