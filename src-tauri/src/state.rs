@@ -63,29 +63,29 @@ impl State {
         }
     }
 
-    fn init_db(&self) {
+    fn init_db(&self) -> Result<()> {
         let workspace_path = Path::new(self.workspace_path.as_str());
 
         let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
 
         if !workspace_vocabulary_path_buf.exists() {
-            mkdir_p(&workspace_vocabulary_path_buf).unwrap();
+            mkdir_p(&workspace_vocabulary_path_buf)?;
         }
-        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db"))?;
 
-        conn.execute("CREATE TABLE IF NOT EXISTS vocabulary ( query TEXT UNIQUE, content TEXT NOT NULL, timestamp INT NOT NULL);", ()).unwrap();
+        conn.execute("CREATE TABLE IF NOT EXISTS vocabulary ( query TEXT UNIQUE, content TEXT NOT NULL, timestamp INT NOT NULL);", ())?;
 
         conn.execute(
             "CREATE INDEX IF NOT EXISTS query_index ON vocabulary (query COLLATE NOCASE);",
             (),
-        )
-        .unwrap();
+        )?;
 
         conn.execute(
             "CREATE INDEX IF NOT EXISTS timestamp_index ON vocabulary(timestamp);",
             (),
-        )
-        .unwrap();
+        )?;
+
+        Ok(())
     }
 
     pub fn delete_word(&self, query: &str)  -> Result<String>  {
@@ -93,15 +93,15 @@ impl State {
 
         let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
 
-        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db"))?;
 
-        conn.execute("DELETE FROM vocabulary WHERE query = ?1;", &[query]).unwrap();
+        conn.execute("DELETE FROM vocabulary WHERE query = ?1;", &[query])?;
 
         let slug = slugify!(query, separator = "_");
         let new_filename = format!("{}.json", slug.as_str());
 
         let path = workspace_vocabulary_path_buf.join(&new_filename);
-        std::fs::remove_file(path.as_path()).unwrap();
+        std::fs::remove_file(path.as_path())?;
 
         Ok(new_filename)
     }
@@ -112,7 +112,7 @@ impl State {
         let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
 
         if !workspace_vocabulary_path_buf.exists() {
-            mkdir_p(&workspace_vocabulary_path_buf).unwrap();
+            mkdir_p(&workspace_vocabulary_path_buf)?;
         }
 
         print!("search in {:?}", &self.target_lang);
@@ -185,7 +185,7 @@ impl State {
 
     pub fn load_word(&self, query: &str) -> Result<String> {
         let workspace_path = Path::new(self.workspace_path.as_str());
-        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db"))?;
 
         let content = conn
             .query_row(
@@ -200,7 +200,7 @@ impl State {
 
     pub fn query_words(&self, query: &str) -> Result<Vec<String>> {
         let workspace_path = Path::new(self.workspace_path.as_str());
-        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db"))?;
 
         let mut stmt = conn
             .prepare("SELECT query FROM vocabulary WHERE query LIKE :pattern ORDER BY timestamp DESC;")
@@ -219,22 +219,33 @@ impl State {
         Ok(result)
     }
 
+    pub fn to_asset_absolute_path(&mut self, image_filename: &str) -> Result<String> {
+        let workspace_assets_path_buf = PathBuf::new()
+            .join(self.workspace_path.as_str())
+            .join("assets");
+
+        Ok(String::from(
+            workspace_assets_path_buf
+                .join(image_filename)
+                .to_str()
+                .unwrap(),
+        ))
+    }
+
     pub fn fetch_all_words(&self) -> Result<Vec<String>> {
         let workspace_path = Path::new(self.workspace_path.as_str());
-        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db"))?;
 
         let mut stmt = conn
-            .prepare("SELECT query FROM vocabulary ORDER BY timestamp DESC;")
-            .unwrap();
+            .prepare("SELECT query FROM vocabulary ORDER BY timestamp DESC;")?;
         let word_iter = stmt
             .query_map((), |row| {
                 row.get(0)
-            })
-            .unwrap();
+            })?;
 
         let mut result = Vec::<String>::new();
         for word in word_iter {
-            result.push(word.unwrap());
+            result.push(word?);
         }
 
         Ok(result)
@@ -246,28 +257,24 @@ impl State {
         let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
 
         if !workspace_vocabulary_path_buf.exists() {
-            mkdir_p(&workspace_vocabulary_path_buf).unwrap();
+            mkdir_p(&workspace_vocabulary_path_buf)?;
         }
 
-        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db"))?;
 
 
         for entry in glob(
             workspace_vocabulary_path_buf
                 .join("*.json")
-                .to_str()
-                .unwrap(),
+                .to_str().unwrap(),
         )
         .expect("Failed to read glob pattern")
         {
             match entry {
                 std::result::Result::Ok(path) => {
-                    let seconds = std::fs::metadata(path.clone())
-                        .unwrap()
-                        .modified()
-                        .unwrap()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap()
+                    let seconds = std::fs::metadata(path.clone())?
+                        .modified()?
+                        .duration_since(UNIX_EPOCH)?
                         .as_secs();
                     println!("{:?} {}", path.display(), seconds);
                     let file = File::open(path).expect("could not open file");
@@ -289,7 +296,6 @@ impl State {
         openai_token: &str,
         target_lang: &str
     ) -> Result<String> {
-        println!("first time setup");
         if let Some(proj_dirs) = ProjectDirs::from("com", "Epiphany", "Broca") {
             let config_dir_path = proj_dirs.config_dir();
 
@@ -315,7 +321,7 @@ impl State {
             let serialized_config = serde_json::to_vec_pretty(&config)?;
 
             if !config_dir_path.exists() {
-                mkdir_p(&config_dir_path).unwrap();
+                mkdir_p(&config_dir_path)?;
             }
             let mut file = File::create(config_file_path)?;
             file.write_all(&serialized_config)?;
@@ -327,7 +333,7 @@ impl State {
             let workspace_path = Path::new(workspace_path_str);
 
             if !workspace_path.exists() {
-                mkdir_p(&workspace_path).unwrap();
+                mkdir_p(&workspace_path)?;
             }
 
             let gitignore_path = workspace_path.join(".gitignore");
@@ -341,10 +347,10 @@ impl State {
                 PathBuf::new().join(workspace_path).join("vocabulary");
 
             if !workspace_vocabulary_path_buf.exists() {
-                mkdir_p(&workspace_vocabulary_path_buf).unwrap();
+                mkdir_p(&workspace_vocabulary_path_buf)?;
             }
 
-            self.init_db();
+            self.init_db()?;
 
             return Ok(self.workspace_path.clone());
         }

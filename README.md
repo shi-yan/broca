@@ -16,8 +16,24 @@ And the name? Broca is named after the [brain region](https://www.hopkinsmedicin
 
 Prebuilt installers are available on the [release page](https://github.com/shi-yan/broca/releases) (MacOS only for now).
 
+## Usage
+
+## Build
+
+1. Install [tauri-cli](https://tauri.app/v1/guides/getting-started/setup/html-css-js). I prefer using Cargo.
+```bash
+cargo install tauri-cli
+```
+
+2. Build
+```bash
+cd ./frontend
+npm i
+cd ../src-tauri
+cargo tauri dev
+```
+
 ## Todos
-* More languages
 * Pronunciation support 
 * Click to load more example sentences
 * GPT Usage Gauge
