@@ -44,3 +44,17 @@
     border-width: 0;
     border-style: none;
 }
+
+.Select {
+    font-size: 16px;
+    padding: 6px;
+    border-radius: 6px;
+    border-width: 0;
+    background-color: burlywood;
+    cursor: pointer;
+    margin-top: 10px;
+    border:0;
+    outline:0;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}

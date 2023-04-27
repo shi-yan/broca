@@ -30,10 +30,13 @@ function ConfigView(prop) {
     }
 
     let openaiInput;
+    let targetLang;
+    let awsKey;
+    let awsSecret;
 
     async function onApply(e) {
         e.preventDefault();
-        
+
         let keyRegex = /^sk-[A-Za-z0-9]{48}$/g
 
         let folder = vocabularyFolder();
@@ -44,13 +47,12 @@ function ConfigView(prop) {
         if (!match) {
             setError('Invalid OpenAI API token.');
         }
-        else if (!folder || folder.length == 0){
+        else if (!folder || folder.length == 0) {
             setError('Please choose a folder for your vocabulary.');
         }
-        else 
-        {
+        else {
             try {
-                const workspaceData = await tauri_invoke('first_time_setup', { workspacePath: vocabularyFolder(), openaiToken: openaiInput.value });
+                const workspaceData = await tauri_invoke('first_time_setup', { workspacePath: vocabularyFolder(), openaiToken: openaiInput.value, targetLang:targetLang.value  });
                 configured.setConfigured(true);
                 setError(null);
             } catch (e) {
@@ -65,13 +67,27 @@ function ConfigView(prop) {
             <Show when={error()}>
                 <p class={styles.Error}>Error: {error()}</p>
             </Show>
-            <h3>First time setup</h3>
+            <h3>Setup</h3>
             <p>{vocabularyFolder()}</p>
             <button class={styles.Button} onclick={onFolderSelected}>Pick a vocabulary directory</button>
             <label for="apikey">OpenAI API Key:</label>
             <input ref={openaiInput} id="apikey" type="text" />
+            <label for="target">Target Language:</label>
+            <select class={styles.Select} name="target" id="targetLang" ref={targetLang} >
+                <option value="Chinese">Chinese</option>
+                <option value="Spanish">Spanish</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Korean">Korean</option>
+                <option value="German">German</option>
+                <option value="French">French</option>
+                <option value="Portuguese">Portuguese</option>
+            </select>
+            <p>Voice Engine (AWS Polly) (Optional):</p>
+            <label for="awskey">AWS Key:</label>
+            <input ref={awsKey} id="awskey" type="text" />
+            <label for="awssecret">AWS Secret:</label>
+            <input ref={awsSecret} id="awssecret" type="text" />
             <button class={styles.Button} onClick={onApply}>Apply</button>
-
         </div>
     );
 }

@@ -4,7 +4,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Lang {
     English(String),
-    Chinese(String)
+    Chinese(String),
+    Spanish(String),
+    Japanese(String),
+    Korean(String),
+    German(String),
+    French(String),
+    Portuguese(String)
 }
 
 #[derive(Debug, Serialize, Deserialize)]

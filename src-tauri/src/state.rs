@@ -11,15 +11,37 @@ use std::time::UNIX_EPOCH;
 use slugify::slugify;
 use crate::entry::Entry;
 
+#[derive(Debug, Serialize, Deserialize)]
+pub enum TargetLang {
+    Chinese,
+    Spanish,
+    Japanese,
+    Korean,
+    German,
+    French,
+    Portuguese
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PollyConfig {
+    aws_key: String,
+    aws_secret: String,
+    voice_id: String
+}
+
 pub struct State {
     workspace_path: String,
     openai_token: String,
+    target_lang: TargetLang,
+    polly_config: Option<PollyConfig>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
     workspace_path: String,
     openai_token: String,
+    target_lang: TargetLang,
+    polly_config: Option<PollyConfig>
 }
 
 fn mkdir_p<P: AsRef<Path>>(path: &P) -> Result<()> {
@@ -36,6 +58,8 @@ impl State {
         State {
             workspace_path: String::new(),
             openai_token: String::new(),
+            target_lang: TargetLang::Chinese,
+            polly_config: None
         }
     }
 
@@ -47,7 +71,7 @@ impl State {
         if !workspace_vocabulary_path_buf.exists() {
             mkdir_p(&workspace_vocabulary_path_buf).unwrap();
         }
-        let mut conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
 
         conn.execute("CREATE TABLE IF NOT EXISTS vocabulary ( query TEXT UNIQUE, content TEXT NOT NULL, timestamp INT NOT NULL);", ()).unwrap();
 
@@ -69,12 +93,12 @@ impl State {
 
         let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
 
-        let mut conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
 
         conn.execute("DELETE FROM vocabulary WHERE query = ?1;", &[query]).unwrap();
 
         let slug = slugify!(query, separator = "_");
-        let mut new_filename = format!("{}.json", slug.as_str());
+        let new_filename = format!("{}.json", slug.as_str());
 
         let path = workspace_vocabulary_path_buf.join(&new_filename);
         std::fs::remove_file(path.as_path()).unwrap();
@@ -91,7 +115,9 @@ impl State {
             mkdir_p(&workspace_vocabulary_path_buf).unwrap();
         }
 
-        let res = crate::openai::search(query.to_lowercase().as_str(), self.openai_token.as_str()).await?;
+        print!("search in {:?}", &self.target_lang);
+
+        let res = crate::openai::search(query.to_lowercase().as_str(), self.openai_token.as_str(), &self.target_lang).await?;
 
         let slug = slugify!(query, separator = "_");
 
@@ -134,16 +160,17 @@ impl State {
             let rs = config_file_path.exists();
 
             if rs == true {
-                let mut file = File::open(config_file_path).unwrap();
+                let mut file = File::open(config_file_path)?;
                 let mut file_buf: Vec<u8> = Vec::new();
-                file.read_to_end(&mut file_buf).unwrap();
+                file.read_to_end(&mut file_buf)?;
 
-                let config: Config = serde_json::from_slice(&file_buf).unwrap();
+                let config: Config = serde_json::from_slice(&file_buf)?;
 
                 println!("exisiting config, {:?}", config);
 
                 self.workspace_path = config.workspace_path;
                 self.openai_token = config.openai_token;
+                self.target_lang = config.target_lang;
 
                 return Ok(self.workspace_path.clone());
             }
@@ -156,11 +183,9 @@ impl State {
         Err(anyhow!("Not configed."))
     }
 
-    fn config_database(&self) {}
-
     pub fn load_word(&self, query: &str) -> Result<String> {
         let workspace_path = Path::new(self.workspace_path.as_str());
-        let mut conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
 
         let content = conn
             .query_row(
@@ -175,7 +200,7 @@ impl State {
 
     pub fn query_words(&self, query: &str) -> Result<Vec<String>> {
         let workspace_path = Path::new(self.workspace_path.as_str());
-        let mut conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
 
         let mut stmt = conn
             .prepare("SELECT query FROM vocabulary WHERE query LIKE :pattern ORDER BY timestamp DESC;")
@@ -196,7 +221,7 @@ impl State {
 
     pub fn fetch_all_words(&self) -> Result<Vec<String>> {
         let workspace_path = Path::new(self.workspace_path.as_str());
-        let mut conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
 
         let mut stmt = conn
             .prepare("SELECT query FROM vocabulary ORDER BY timestamp DESC;")
@@ -224,7 +249,7 @@ impl State {
             mkdir_p(&workspace_vocabulary_path_buf).unwrap();
         }
 
-        let mut conn = Connection::open(workspace_path.join("cache.db")).unwrap();
+        let conn = Connection::open(workspace_path.join("cache.db")).unwrap();
 
 
         for entry in glob(
@@ -246,7 +271,7 @@ impl State {
                         .as_secs();
                     println!("{:?} {}", path.display(), seconds);
                     let file = File::open(path).expect("could not open file");
-                    let mut buffered_reader = BufReader::new(file);
+                    let buffered_reader = BufReader::new(file);
                     let e: Entry = serde_json::from_reader(buffered_reader).unwrap();
                     conn.execute("INSERT OR REPLACE INTO vocabulary(query, content, timestamp) SELECT ?1, ?2, ?3 WHERE NOT EXISTS (SELECT * FROM vocabulary WHERE query = ?4 AND timestamp >= ?5);", (e.query.clone(), serde_json::to_string(&e).unwrap(), seconds, e.query.clone(), seconds)).unwrap();
                     //results.push(e.query);
@@ -262,6 +287,7 @@ impl State {
         &mut self,
         workspace_path_str: &str,
         openai_token: &str,
+        target_lang: &str
     ) -> Result<String> {
         println!("first time setup");
         if let Some(proj_dirs) = ProjectDirs::from("com", "Epiphany", "Broca") {
@@ -273,6 +299,17 @@ impl State {
             let config = Config {
                 workspace_path: String::from(workspace_path_str),
                 openai_token: String::from(openai_token),
+                target_lang: match target_lang {
+                    "Chinese" => { TargetLang::Chinese },
+                    "Spanish" => {TargetLang::Spanish},
+                    "Japanese" => {TargetLang::Japanese},
+                    "Korean" => {TargetLang::Korean},
+                    "German" => {TargetLang::German},
+                    "French" => {TargetLang::French},
+                    "Portuguese" => {TargetLang::Portuguese},
+                    &_ => return Err(anyhow!("Unknown Target Language."))
+                },
+                polly_config:None
             };
 
             let serialized_config = serde_json::to_vec_pretty(&config)?;
@@ -285,6 +322,7 @@ impl State {
 
             self.workspace_path = config.workspace_path;
             self.openai_token = config.openai_token;
+            self.target_lang = config.target_lang;
 
             let workspace_path = Path::new(workspace_path_str);
 

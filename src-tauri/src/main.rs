@@ -32,12 +32,13 @@ fn first_time_setup(
     state: tauri::State<Mutex<state::State>>,
     workspace_path: &str,
     openai_token: &str,
+    target_lang: &str
 ) -> Result<String, String> {
-    println!("{} {}", workspace_path, openai_token);
+    println!("{} {} {}", workspace_path, openai_token, target_lang);
     match state
         .lock()
         .unwrap()
-        .first_time_setup(workspace_path, openai_token)
+        .first_time_setup(workspace_path, openai_token, target_lang)
     {
         Ok(content) => return Ok(content),
         Err(message) => return Err(message.to_string()),
