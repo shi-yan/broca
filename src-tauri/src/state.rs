@@ -1,15 +1,19 @@
 extern crate directories;
+use crate::entry::Entry;
 use anyhow::{anyhow, Ok, Result};
+use aws_sdk_polly::config::Config as AWSConfig;
+use aws_sdk_polly::config::Credentials;
+use aws_sdk_polly::Client;
+use aws_types::region::Region;
 use directories::{BaseDirs, ProjectDirs, UserDirs};
 use glob::glob;
 use rusqlite::{Connection, Result as SqliteResult};
 use serde::{Deserialize, Serialize};
+use slugify::slugify;
 use std::fs::{create_dir_all, File};
 use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
-use slugify::slugify;
-use crate::entry::Entry;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum TargetLang {
@@ -19,21 +23,21 @@ pub enum TargetLang {
     Korean,
     German,
     French,
-    Portuguese
+    Portuguese,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PollyConfig {
     aws_key: String,
     aws_secret: String,
-    voice_id: String
+    voice_id: String,
 }
 
 pub struct State {
     workspace_path: String,
     openai_token: String,
     target_lang: TargetLang,
-    polly_config: Option<PollyConfig>
+    polly_config: Option<PollyConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -41,7 +45,7 @@ struct Config {
     workspace_path: String,
     openai_token: String,
     target_lang: TargetLang,
-    polly_config: Option<PollyConfig>
+    polly_config: Option<PollyConfig>,
 }
 
 fn mkdir_p<P: AsRef<Path>>(path: &P) -> Result<()> {
@@ -59,7 +63,7 @@ impl State {
             workspace_path: String::new(),
             openai_token: String::new(),
             target_lang: TargetLang::Chinese,
-            polly_config: None
+            polly_config: None,
         }
     }
 
@@ -88,7 +92,7 @@ impl State {
         Ok(())
     }
 
-    pub fn delete_word(&self, query: &str)  -> Result<String>  {
+    pub fn delete_word(&self, query: &str) -> Result<String> {
         let workspace_path = Path::new(self.workspace_path.as_str());
 
         let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
@@ -106,7 +110,50 @@ impl State {
         Ok(new_filename)
     }
 
-    pub async fn search(&self, query: &str) -> Result<String>{
+    pub async fn say(&self, content: &str) -> Result<String> {
+        let slug = slugify!(content, separator = "_");
+        let new_filename = format!("{}.mp3", slug.as_str());
+
+        let workspace_path = Path::new(self.workspace_path.as_str());
+
+        let workspace_audio_path_buf = PathBuf::new().join(workspace_path).join("audio");
+
+        let path = workspace_audio_path_buf.join(new_filename.as_str());
+
+        if path.exists() {
+            return Ok(String::from(path.to_str().unwrap()));
+        }
+
+        if let Some(polly_config) = &self.polly_config {
+            let creds = Credentials::new(&polly_config.aws_key, &polly_config.aws_secret, None, None, "self");
+
+            let conf = aws_sdk_polly::config::Config::builder()
+                .credentials_provider(creds)
+                .region(Region::new("us-west-2"))
+                .build();
+
+            let client = Client::from_conf(conf);
+
+            let audio = client
+                .synthesize_speech()
+                .output_format(aws_sdk_polly::types::OutputFormat::Mp3)
+                .text(content)
+                .voice_id(aws_sdk_polly::types::VoiceId::Olivia)
+                .send()
+                .await?;
+            let buf = audio.audio_stream.collect().await?;
+            let mut file = std::fs::File::create(path.to_str().unwrap())?;
+            file.write_all(&buf.to_vec())?;
+            file.flush()?;
+            println!("Generated audio {}", path.to_str().unwrap());
+
+            return Ok(String::from(path.to_str().unwrap()));
+        } else {
+            return Err(anyhow!("Polly is not configured!".to_string()));
+        }
+    }
+
+    pub async fn search(&self, query: &str) -> Result<String> {
         let workspace_path = Path::new(self.workspace_path.as_str());
 
         let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
@@ -117,7 +164,12 @@ impl State {
 
         print!("search in {:?}", &self.target_lang);
 
-        let res = crate::openai::search(query.to_lowercase().as_str(), self.openai_token.as_str(), &self.target_lang).await?;
+        let res = crate::openai::search(
+            query.to_lowercase().as_str(),
+            self.openai_token.as_str(),
+            &self.target_lang,
+        )
+        .await?;
 
         let slug = slugify!(query, separator = "_");
 
@@ -171,6 +223,7 @@ impl State {
                 self.workspace_path = config.workspace_path;
                 self.openai_token = config.openai_token;
                 self.target_lang = config.target_lang;
+                self.polly_config = config.polly_config;
 
                 return Ok(self.workspace_path.clone());
             }
@@ -203,7 +256,9 @@ impl State {
         let conn = Connection::open(workspace_path.join("cache.db"))?;
 
         let mut stmt = conn
-            .prepare("SELECT query FROM vocabulary WHERE query LIKE :pattern ORDER BY timestamp DESC;")
+            .prepare(
+                "SELECT query FROM vocabulary WHERE query LIKE :pattern ORDER BY timestamp DESC;",
+            )
             .unwrap();
         let word_iter = stmt
             .query_map(&[(":pattern", format!("%{}%", query).as_str())], |row| {
@@ -236,12 +291,8 @@ impl State {
         let workspace_path = Path::new(self.workspace_path.as_str());
         let conn = Connection::open(workspace_path.join("cache.db"))?;
 
-        let mut stmt = conn
-            .prepare("SELECT query FROM vocabulary ORDER BY timestamp DESC;")?;
-        let word_iter = stmt
-            .query_map((), |row| {
-                row.get(0)
-            })?;
+        let mut stmt = conn.prepare("SELECT query FROM vocabulary ORDER BY timestamp DESC;")?;
+        let word_iter = stmt.query_map((), |row| row.get(0))?;
 
         let mut result = Vec::<String>::new();
         for word in word_iter {
@@ -260,13 +311,19 @@ impl State {
             mkdir_p(&workspace_vocabulary_path_buf)?;
         }
 
-        let conn = Connection::open(workspace_path.join("cache.db"))?;
+        let workspace_audio_path_buf = PathBuf::new().join(workspace_path).join("audio");
 
+        if !workspace_audio_path_buf.exists() {
+            mkdir_p(&workspace_audio_path_buf)?;
+        }
+
+        let conn = Connection::open(workspace_path.join("cache.db"))?;
 
         for entry in glob(
             workspace_vocabulary_path_buf
                 .join("*.json")
-                .to_str().unwrap(),
+                .to_str()
+                .unwrap(),
         )
         .expect("Failed to read glob pattern")
         {
@@ -286,7 +343,7 @@ impl State {
                 Err(e) => println!("{:?}", e),
             }
         }
-        let  results = self.fetch_all_words();
+        let results = self.fetch_all_words();
         results
     }
 
@@ -294,7 +351,9 @@ impl State {
         &mut self,
         workspace_path_str: &str,
         openai_token: &str,
-        target_lang: &str
+        target_lang: &str,
+        aws_key: Option<&str>,
+        aws_secret: Option<&str>
     ) -> Result<String> {
         if let Some(proj_dirs) = ProjectDirs::from("com", "Epiphany", "Broca") {
             let config_dir_path = proj_dirs.config_dir();
@@ -306,16 +365,24 @@ impl State {
                 workspace_path: String::from(workspace_path_str),
                 openai_token: String::from(openai_token),
                 target_lang: match target_lang {
-                    "Chinese" => { TargetLang::Chinese },
-                    "Spanish" => {TargetLang::Spanish},
-                    "Japanese" => {TargetLang::Japanese},
-                    "Korean" => {TargetLang::Korean},
-                    "German" => {TargetLang::German},
-                    "French" => {TargetLang::French},
-                    "Portuguese" => {TargetLang::Portuguese},
-                    &_ => return Err(anyhow!("Unknown Target Language."))
+                    "Chinese" => TargetLang::Chinese,
+                    "Spanish" => TargetLang::Spanish,
+                    "Japanese" => TargetLang::Japanese,
+                    "Korean" => TargetLang::Korean,
+                    "German" => TargetLang::German,
+                    "French" => TargetLang::French,
+                    "Portuguese" => TargetLang::Portuguese,
+                    &_ => return Err(anyhow!("Unknown Target Language.")),
                 },
-                polly_config:None
+                polly_config: if aws_key.is_some() && aws_secret.is_some() {
+                    Some( PollyConfig{
+                        aws_key: aws_key.unwrap().to_string(),
+                        aws_secret: aws_secret.unwrap().to_string(),
+                        voice_id: "Olivia".to_string()
+                    })
+                }else {
+                    None
+                },
             };
 
             let serialized_config = serde_json::to_vec_pretty(&config)?;
@@ -329,6 +396,7 @@ impl State {
             self.workspace_path = config.workspace_path;
             self.openai_token = config.openai_token;
             self.target_lang = config.target_lang;
+            self.polly_config = config.polly_config;
 
             let workspace_path = Path::new(workspace_path_str);
 
@@ -350,7 +418,14 @@ impl State {
                 mkdir_p(&workspace_vocabulary_path_buf)?;
             }
 
+            let workspace_audio_path_buf = PathBuf::new().join(workspace_path).join("audio");
+
+            if !workspace_audio_path_buf.exists() {
+                mkdir_p(&workspace_audio_path_buf)?;
+            }
+
             self.init_db()?;
+
 
             return Ok(self.workspace_path.clone());
         }

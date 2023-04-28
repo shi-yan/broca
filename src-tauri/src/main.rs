@@ -32,13 +32,15 @@ fn first_time_setup(
     state: tauri::State<Mutex<state::State>>,
     workspace_path: &str,
     openai_token: &str,
-    target_lang: &str
+    target_lang: &str,
+    aws_key: Option<&str>,
+    aws_secret: Option<&str>
 ) -> Result<String, String> {
-    println!("{} {} {}", workspace_path, openai_token, target_lang);
+    println!("{} {} {} {:?} {:?}", workspace_path, openai_token, target_lang, aws_key, aws_secret);
     match state
         .lock()
         .unwrap()
-        .first_time_setup(workspace_path, openai_token, target_lang)
+        .first_time_setup(workspace_path, openai_token, target_lang, aws_key, aws_secret)
     {
         Ok(content) => return Ok(content),
         Err(message) => return Err(message.to_string()),
@@ -99,6 +101,20 @@ fn search(state: tauri::State<Mutex<state::State>>, query: &str) -> Result<Strin
 }
 
 #[tauri::command]
+fn say(state: tauri::State<Mutex<state::State>>, query: &str) -> Result<String, String> {
+    let rt = Runtime::new().unwrap();
+
+    match  rt.block_on( state.lock().unwrap().say(query)) {
+        Ok(content) => {
+            return Ok(content);
+        }
+        Err(message) => {
+            return Err(message.to_string());
+        }
+    }
+}
+
+#[tauri::command]
 fn delete_word(state: tauri::State<Mutex<state::State>>, query: &str) -> Result<String, String> {
     if let Ok(content) = state.lock().unwrap().delete_word(query) {
         return Ok(content);
@@ -133,7 +149,8 @@ fn main() {
             query_words,
             search,
             delete_word,
-            fetch_all_words
+            fetch_all_words,
+            say
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

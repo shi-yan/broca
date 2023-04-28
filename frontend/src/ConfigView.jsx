@@ -52,7 +52,7 @@ function ConfigView(prop) {
         }
         else {
             try {
-                const workspaceData = await tauri_invoke('first_time_setup', { workspacePath: vocabularyFolder(), openaiToken: openaiInput.value, targetLang:targetLang.value  });
+                const workspaceData = await tauri_invoke('first_time_setup', { workspacePath: vocabularyFolder(), openaiToken: openaiInput.value, targetLang:targetLang.value, awsKey:awsKey.value.length>0?awsKey.value:null, awsSecret:awsSecret.value.length>0?awsSecret.value:null   });
                 configured.setConfigured(true);
                 setError(null);
             } catch (e) {

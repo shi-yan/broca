@@ -21,6 +21,14 @@
       "shell": {
         "all": false,
         "open": true
+      },
+      "fs": {
+        "readFile": true,
+        "readDir": true
+      },
+      "protocol":{
+        "asset":true,
+        "assetScope": ["**"]
       }
     },
     "bundle": {

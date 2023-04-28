@@ -1,6 +1,6 @@
 # <img src="icon.png" width="100" height="100" /> Broca
 
-A ChatGPT powered dictionary (English/Chinese (more languages support coming)) + vocabulary book
+A ChatGPT powered dictionary (English <-> Chinese|Spanish|Japanese|Korean|German|French|Portuguese) + vocabulary book
 
 https://user-images.githubusercontent.com/326807/233854967-a3ec9120-b6da-46e2-8aaf-b1bac308c877.mp4
 
@@ -34,7 +34,6 @@ cargo tauri dev
 ```
 
 ## Todos
-* Pronunciation support 
 * Click to load more example sentences
 * GPT Usage Gauge
 * Linux / Win support

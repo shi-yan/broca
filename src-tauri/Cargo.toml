@@ -15,7 +15,7 @@ tauri-build = { version = "1.2", features = [] }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.2", features = ["macos-private-api", "shell-open", "system-tray"] }
+tauri = { version = "1.2", features = ["fs-read-dir", "fs-read-file", "macos-private-api", "protocol-asset", "shell-open", "system-tray"] }
 tauri-plugin-positioner = { version = "1.0", features = ["system-tray"] }
 directories = "4.0"
 cocoa = "0.24"
@@ -25,6 +25,9 @@ anyhow = "1.0"
 slugify = "0.1"
 rusqlite = { version = "0.29", features = ["bundled","vtab","trace"] }
 glob = "0.3"
+aws-config = "0.55"
+aws-types ="0.55"
+aws-sdk-polly = "0.26"
 
 #[[bin]]
 #name = "debug"
