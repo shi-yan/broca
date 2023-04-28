@@ -138,7 +138,8 @@ impl State {
                 .synthesize_speech()
                 .output_format(aws_sdk_polly::types::OutputFormat::Mp3)
                 .text(content)
-                .voice_id(aws_sdk_polly::types::VoiceId::Olivia)
+                .language_code(aws_sdk_polly::types::LanguageCode::EnUs)
+                .voice_id(aws_sdk_polly::types::VoiceId::Amy)
                 .send()
                 .await?;
             let buf = audio.audio_stream.collect().await?;
