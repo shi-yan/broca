@@ -47,7 +47,7 @@ function DetailArea() {
           <For each={detail.detail().meanings}>{(meaning, i) =>
             <li>
               <p class={styles.POS}>{meaning.pos}</p>
-              <ul>
+              <ol>
                 <For each={meaning.meanings}>{(m, i) =>
                   <li class={styles.Meaning}>
                     <ul>
@@ -77,7 +77,7 @@ function DetailArea() {
                     }</For>
                   </li>
                 }</For>
-              </ul>
+              </ol>
             </li>
           }</For>
         </ul>

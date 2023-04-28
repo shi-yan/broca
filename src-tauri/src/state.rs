@@ -200,6 +200,55 @@ impl State {
         Ok(serialized)
     }
 
+   /*  pub async fn search_example_sentences(&self, query: &crate::openai::SentenceExampleQuery) -> Result<String> {
+        let workspace_path = Path::new(self.workspace_path.as_str());
+
+        let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
+
+        if !workspace_vocabulary_path_buf.exists() {
+            mkdir_p(&workspace_vocabulary_path_buf)?;
+        }
+
+        print!("search in {:?}", &self.target_lang);
+
+        let res = crate::openai::search_example_sentences(
+            query,
+            self.openai_token.as_str(),
+            &self.target_lang,
+        )
+        .await?;
+
+        let slug = slugify!(query.query.as_str(), separator = "_");
+
+        let new_filename = format!("{}.json", slug.as_str());
+
+        //test
+
+        let serialized = serde_json::to_string_pretty(&res)?;
+
+        let path = workspace_vocabulary_path_buf.join(&new_filename);
+
+        let mut file = File::create(path.as_path())?;
+
+        file.write_all(serialized.as_bytes())?;
+
+        let conn = Connection::open(workspace_path.join("cache.db"))?;
+
+        let seconds = std::fs::metadata(path.as_path())
+            .unwrap()
+            .modified()
+            .unwrap()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        conn.execute("INSERT OR REPLACE INTO vocabulary(query, content, timestamp) SELECT ?1, ?2, ?3 WHERE NOT EXISTS (SELECT * FROM vocabulary WHERE query = ?4 AND timestamp >= ?5);", (query.to_lowercase(), serialized.clone(), seconds, query.to_lowercase(), seconds)).unwrap();
+
+        Ok(serialized)
+    }
+*/
+    
+
     pub fn load_config(&mut self) -> Result<Config> {
         if let Some(proj_dirs) = ProjectDirs::from("com", "Epiphany", "Broca") {
             let path = proj_dirs.config_dir();

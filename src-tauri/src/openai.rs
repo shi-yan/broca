@@ -478,3 +478,112 @@ pub async fn search(query: &str, auth_token: &str, target_lang:&state::TargetLan
         }
     };
 }
+
+pub struct SentenceExampleQuery {
+    pub query: String,
+    pub meaning: String,    
+    pub examples: Vec<Vec<entry::Lang>>
+}
+ 
+fn assemble_sentence_example_query(sentence_query: &SentenceExampleQuery, target_lang:&state::TargetLang ) -> String {
+
+    let language_str = match target_lang {
+        state::TargetLang::Chinese => { "Chinese" }
+        state::TargetLang::Spanish => { "Spanish" }
+        state::TargetLang::Japanese => { "Japanese" }
+        state::TargetLang::Korean => { "Korean" }
+        state::TargetLang::German => { "German" }
+        state::TargetLang::French => { "French" }
+        state::TargetLang::Portuguese => {"Portuguese"}
+    };
+
+    let query = ChatGPTQuery {
+        model: "gpt-3.5-turbo".to_string(),
+        messages: vec![Message {
+                role: "system".to_string(),
+                content: format!("You are a dictionary bot. Given a query, reply more sample sentences in English and {} in JSON format.", language_str).to_string()
+        },
+        Message {
+            role: "user".to_string(),
+            content: format!("Query: \"{}\" Meaning: \"{}\"]", sentence_query.query, sentence_query.meaning)
+          },
+         Message        {
+            role: "assistant".to_string(),
+            content:serde_json::to_string(&sentence_query.examples).unwrap()
+        } ,
+        Message     {
+            role: "user".to_string(),
+            content: "More alternative examples?".to_string()
+          }],
+    };
+    let res = serde_json::to_string(&query).unwrap();
+
+    res
+}
+
+
+pub async fn search_example_sentences(search_query: &SentenceExampleQuery, auth_token: &str, target_lang:&state::TargetLang) -> Result<Vec<Vec<entry::Lang>>> {
+    let bearer_auth = format!("Bearer {}", auth_token);
+
+    let data = assemble_sentence_example_query(search_query, target_lang);
+
+    println!("{}", data);
+
+    let url = "https://api.openai.com/v1/chat/completions".to_string();
+    let client = reqwest::Client::new();
+    let response = client
+        .post(url)
+        .header(ACCEPT, "*/*")
+        .header(AUTHORIZATION, &bearer_auth)
+        .header(CONTENT_TYPE, "application/json")
+        .body(data)
+        .send()
+        .await
+        .unwrap();
+    match response.status() {
+        reqwest::StatusCode::OK => {
+            match response.json::<Root>().await {
+                Ok(parsed) => {
+                    println!("🔥 Success!");
+                    println!("💬 Response: {}", parsed.choices[0].message.content);
+
+                    match serde_json::from_str(&parsed.choices[0].message.content) {
+                        Ok(meanings) => {
+                            println!("{:?}", meanings);
+                            let result : Vec<Vec<entry::Lang>> = meanings;
+                            return Ok(result);
+                        }
+                        Err(message) => {
+                            return Err(anyhow!(format!(
+                                "{} : {}",
+                                message.to_string(),
+                                parsed.choices[0].message.content
+                            )));
+                        }
+                    }
+                }
+                Err(_) => {
+                    println!("🛑 Hm, the response didn't match the shape we expected.");
+                    return Err(anyhow!(
+                        "🛑 Hm, the response didn't match the shape we expected."
+                    ));
+                }
+            };
+        }
+        reqwest::StatusCode::UNAUTHORIZED => {
+            println!("🛑 Status: UNAUTHORIZED - Need to grab a new token");
+            return Err(anyhow!("Status: UNAUTHORIZED - Need to grab a new token"));
+        }
+        reqwest::StatusCode::TOO_MANY_REQUESTS => {
+            println!("🛑 Status: 429 - Too many requests");
+            return Err(anyhow!("Status: 429 - Too many requests, this may happend if your API token was generated not too long ago. Please try again later."));
+        }
+        other => {
+            return Err(anyhow!(format!(
+                "🛑 Uh oh! Something unexpected happened: [{:#?} {:?}]",
+                other,
+                response.text().await
+            )));
+        }
+    };
+}
