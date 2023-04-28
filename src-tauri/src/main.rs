@@ -16,7 +16,7 @@ mod win_ext;
 use win_ext::WindowExt;
 
 #[tauri::command]
-fn load_config(state: tauri::State<Mutex<state::State>>) -> Result<String, String> {
+fn load_config(state: tauri::State<Mutex<state::State>>) -> Result<state::Config, String> {
     match state.lock().unwrap().load_config() {
         Ok(content) => {
             return Ok(content);
@@ -35,7 +35,7 @@ fn first_time_setup(
     target_lang: &str,
     aws_key: Option<&str>,
     aws_secret: Option<&str>
-) -> Result<String, String> {
+) -> Result<state::Config, String> {
     println!("{} {} {} {:?} {:?}", workspace_path, openai_token, target_lang, aws_key, aws_secret);
     match state
         .lock()

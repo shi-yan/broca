@@ -18,6 +18,8 @@ Prebuilt installers are available on the [release page](https://github.com/shi-y
 
 ## Usage
 
+
+
 ## Build
 
 1. Install [tauri-cli](https://tauri.app/v1/guides/getting-started/setup/html-css-js). I prefer using Cargo.
@@ -37,3 +39,4 @@ cargo tauri dev
 * Click to load more example sentences
 * GPT Usage Gauge
 * Linux / Win support
+* Select Voice

@@ -15,7 +15,7 @@ use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum TargetLang {
     Chinese,
     Spanish,
@@ -26,7 +26,7 @@ pub enum TargetLang {
     Portuguese,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PollyConfig {
     aws_key: String,
     aws_secret: String,
@@ -40,8 +40,8 @@ pub struct State {
     polly_config: Option<PollyConfig>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Config {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Config {
     workspace_path: String,
     openai_token: String,
     target_lang: TargetLang,
@@ -136,10 +136,11 @@ impl State {
 
             let audio = client
                 .synthesize_speech()
+                .engine(aws_sdk_polly::types::Engine::Neural)
                 .output_format(aws_sdk_polly::types::OutputFormat::Mp3)
                 .text(content)
-                .language_code(aws_sdk_polly::types::LanguageCode::EnUs)
-                .voice_id(aws_sdk_polly::types::VoiceId::Amy)
+                .language_code(aws_sdk_polly::types::LanguageCode::EnAu)
+                .voice_id(aws_sdk_polly::types::VoiceId::Olivia)
                 .send()
                 .await?;
             let buf = audio.audio_stream.collect().await?;
@@ -199,7 +200,7 @@ impl State {
         Ok(serialized)
     }
 
-    pub fn load_config(&mut self) -> Result<String> {
+    pub fn load_config(&mut self) -> Result<Config> {
         if let Some(proj_dirs) = ProjectDirs::from("com", "Epiphany", "Broca") {
             let path = proj_dirs.config_dir();
 
@@ -221,12 +222,12 @@ impl State {
 
                 println!("exisiting config, {:?}", config);
 
-                self.workspace_path = config.workspace_path;
-                self.openai_token = config.openai_token;
-                self.target_lang = config.target_lang;
-                self.polly_config = config.polly_config;
+                self.workspace_path = config.workspace_path.clone();
+                self.openai_token = config.openai_token.clone();
+                self.target_lang = config.target_lang.clone();
+                self.polly_config = config.polly_config.clone();
 
-                return Ok(self.workspace_path.clone());
+                return Ok(config);
             }
 
             // Lin: /home/alice/.config/barapp
@@ -355,7 +356,7 @@ impl State {
         target_lang: &str,
         aws_key: Option<&str>,
         aws_secret: Option<&str>
-    ) -> Result<String> {
+    ) -> Result<Config> {
         if let Some(proj_dirs) = ProjectDirs::from("com", "Epiphany", "Broca") {
             let config_dir_path = proj_dirs.config_dir();
 
@@ -394,10 +395,10 @@ impl State {
             let mut file = File::create(config_file_path)?;
             file.write_all(&serialized_config)?;
 
-            self.workspace_path = config.workspace_path;
-            self.openai_token = config.openai_token;
-            self.target_lang = config.target_lang;
-            self.polly_config = config.polly_config;
+            self.workspace_path = config.workspace_path.clone();
+            self.openai_token = config.openai_token.clone();
+            self.target_lang = config.target_lang.clone();
+            self.polly_config = config.polly_config.clone();
 
             let workspace_path = Path::new(workspace_path_str);
 
@@ -428,7 +429,7 @@ impl State {
             self.init_db()?;
 
 
-            return Ok(self.workspace_path.clone());
+            return Ok(config.clone());
         }
 
         Err(anyhow!("No config directory found."))

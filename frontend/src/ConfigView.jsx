@@ -3,11 +3,11 @@ import styles from './ConfigView.module.css';
 import { render } from 'solid-js/web';
 import { useAppContext } from './AppContext';
 import { tauri_invoke, tauri_dialog } from './tauri';
-import { createSignal } from 'solid-js';
+import { createEffect, createSignal, onMount } from 'solid-js';
 
 function ConfigView(prop) {
 
-    const { configured } = useAppContext();
+    const { configured, narrowDown, allItems, setAllItems, detail, showConfig  } = useAppContext();
 
     const [vocabularyFolder, setVocabularyFolder] = createSignal('');
 
@@ -33,6 +33,32 @@ function ConfigView(prop) {
     let targetLang;
     let awsKey;
     let awsSecret;
+
+    createEffect(() => {
+        if (configured.configured() !== null) {
+            setVocabularyFolder(configured.configured().workspace_path);
+
+            if (openaiInput) {
+                openaiInput.value = configured.configured().openai_token;
+            }
+
+            if (targetLang) {
+                targetLang.value = configured.configured().target_lang;
+            }
+
+            if (awsKey && configured.configured().polly_config) {
+                awsKey.value = configured.configured().polly_config.aws_key;
+            }
+
+            if (awsSecret && configured.configured().polly_config) {
+                awsSecret.value = configured.configured().polly_config.aws_secret;
+            }
+        }
+    })
+
+    function onCancel(e) {
+        showConfig.setShowConfig(false);
+    }
 
     async function onApply(e) {
         e.preventDefault();
@@ -87,7 +113,11 @@ function ConfigView(prop) {
             <input ref={awsKey} id="awskey" type="text" />
             <label for="awssecret">AWS Secret:</label>
             <input ref={awsSecret} id="awssecret" type="text" />
-            <button class={styles.Button} onClick={onApply}>Apply</button>
+            <div style="display:flex;justify-content:end;"><button class={styles.Button} onClick={onApply}>Apply</button>
+            <Show when={configured.configured() !== null}>
+            <button class={styles.Button} onClick={onCancel}>Cancel</button>
+            </Show>
+            </div>
         </div>
     );
 }

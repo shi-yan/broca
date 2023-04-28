@@ -4,7 +4,8 @@ import { tauri_invoke, tauri_dialog } from './tauri';
 const AppContext = createContext();
 
 export function AppContextProvider(props) {
-  const [configured, setConfigured] = createSignal(false);
+  const [showConfig, setShowConfig] = createSignal(false);
+  const [configured, setConfigured] = createSignal(null);
   const [allItems, setAllItems] = createSignal([]);
   const [detail, setDetail] = createSignal({});
 
@@ -31,7 +32,7 @@ export function AppContextProvider(props) {
   });
 
   return (
-    <AppContext.Provider value={{ configured: { configured, setConfigured }, narrowDown, allItems, setAllItems, detail: { detail, setDetail } }}>
+    <AppContext.Provider value={{ configured: { configured, setConfigured }, narrowDown, allItems, setAllItems, detail: { detail, setDetail }, showConfig: {showConfig, setShowConfig} }}>
       {props.children}
     </AppContext.Provider>
   );
