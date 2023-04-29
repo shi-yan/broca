@@ -29,6 +29,10 @@ async function invoke(cmd, payload) {
             return '';
         case 'fetch_all_words':
             return '';
+        case 'generate_more_examples':
+            return '';
+        case 'load_usage':
+            return {prompt: 0, completion: 0}
         default:
             console.error("unimplemented ", cmd);
             break;

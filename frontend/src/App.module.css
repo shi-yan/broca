@@ -47,7 +47,7 @@
   flex-grow: 1;
   flex-shrink: 1;
   position: relative;
-  height: calc(100% - 92px);
+  height: calc(100% - 114px);
   box-sizing: border-box;
 }
 
@@ -88,3 +88,29 @@
   width: 100%;
 }
 
+
+.Loading {
+  width:320px;
+  height:220px;
+  border-radius:20px;
+  overflow:hidden;
+  top:calc(50% - 110px);
+  left:calc(50% - 160px);
+  position:fixed;
+  box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+  background-color: white;
+  font-size: 16px;
+}
+
+.Loading p {
+  margin: 6px;
+  text-align: center;
+}
+
+.StatusBar {
+  padding: 4px;
+  text-align: right;
+  margin-right: 8px;
+  height: 22px;
+  box-sizing: border-box;
+}

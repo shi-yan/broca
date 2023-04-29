@@ -1,4 +1,3 @@
-import logo from './logo.svg';
 import styles from './App.module.css';
 import VocabularyArea from './VocabularyArea.jsx';
 import DetailArea from './DetailArea.jsx';
@@ -7,10 +6,11 @@ import SearchArea from './SearchArea';
 import { createSignal, Show, Switch, Match, onMount } from "solid-js";
 import { useAppContext } from './AppContext';
 import { tauri_invoke, tauri_dialog } from './tauri';
+import loadingAnime from './loading.gif'
 
 function App() {
 
-  const { configured, narrowDown, allItems, setAllItems, detail, showConfig,error } = useAppContext();
+  const { configured, narrowDown, allItems, setAllItems, detail, showConfig,error, loading, usage } = useAppContext();
 
   onMount(async () => {
     try {
@@ -46,6 +46,13 @@ function App() {
             <VocabularyArea class={styles.VocabularyArea}></VocabularyArea>
           </div>
           <SearchArea></SearchArea>
+          <div class={styles.StatusBar}>OpenAI API usage - prompt: {usage.promptTokenUsage()} completion: {usage.completionTokenUsage()} total: {usage.promptTokenUsage() + usage.completionTokenUsage()}</div>
+          <Show when={loading.isLoading()}>
+                <div class={styles.Loading} >
+                    <p>ChatGPT is Working ...</p>
+                    <img src={loadingAnime} style="width:320px;" />
+                </div>
+          </Show>
           <Show when={error.error()}>
             <div class={styles.Error} >
               <p>Error: {error.error()}</p>

@@ -1,11 +1,10 @@
-import logo from './logo.svg';
 import styles from './DetailArea.module.css';
 import { useAppContext } from './AppContext';
 import { tauri_invoke, tauri_dialog } from './tauri';
 
 function DetailArea() {
 
-  const { configured, narrowDown, allItems, setAllItems, detail , error} = useAppContext();
+  const { configured, narrowDown, allItems, setAllItems, detail, error, loading } = useAppContext();
 
   async function onDelete(query) {
     try {
@@ -30,8 +29,25 @@ function DetailArea() {
     }
   }
 
-  async function onGenerateMore(query, meaning) {
-    console.log("generate more", query, meaning);
+  async function onGenerateMore(entry, meaning) {
+
+    for (let m of meaning) {
+      if (Object.keys(m)[0] === 'English') {
+        console.log("generate more", entry, m[Object.keys(m)[0]]);
+        try {
+          loading.setIsLoading(true);
+          const result = await tauri_invoke('generate_more_examples', { entry: JSON.stringify(entry), meaning: m[Object.keys(m)[0]] });
+          const updated = JSON.parse(result);
+          detail.setDetail(updated);
+          loading.dismissLoading(false);
+        }
+        catch(err) {
+          loading.dismissLoading(false);
+          error.setError(err);
+        }
+      }
+    }
+
   }
 
   return (
@@ -69,22 +85,22 @@ function DetailArea() {
                     </ul>
                     <p>Examples</p>
                     <ol type="a">
-                    <For each={m.examples}>{(example, i) =>
-                      <li>
-                      <ul>
-                        <For each={example}>{(ee, i) =>
-                          <li> {ee[Object.keys(ee)[0]]}
-                            <Show when={Object.keys(ee)[0] === 'English' && configured.configured() !== null && configured.configured().polly_config}>
-                              <a href="#" onClick={(e) => { onPronouns(ee[Object.keys(ee)[0]]); }}>
-                                <svg style="width:24px;height24px;margin-left:10px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>volume-high</title><path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z" /></svg>
-                              </a>
-                            </Show>
-                          </li>
-                        }</For>
-                      </ul></li>
-                    }</For>
+                      <For each={m.examples}>{(example, i) =>
+                        <li>
+                          <ul>
+                            <For each={example}>{(ee, i) =>
+                              <li> {ee[Object.keys(ee)[0]]}
+                                <Show when={Object.keys(ee)[0] === 'English' && configured.configured() !== null && configured.configured().polly_config}>
+                                  <a href="#" onClick={(e) => { onPronouns(ee[Object.keys(ee)[0]]); }}>
+                                    <svg style="width:24px;height24px;margin-left:10px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>volume-high</title><path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z" /></svg>
+                                  </a>
+                                </Show>
+                              </li>
+                            }</For>
+                          </ul></li>
+                      }</For>
                     </ol>
-                    <button class={styles.GenerateMore} onClick={(e) => { onGenerateMore(detail.detail().query, m.meaning) }}>Generate More ...</button>
+                    <button class={styles.GenerateMore} onClick={(e) => { onGenerateMore(detail.detail(), m.meaning) }}>Generate More ...</button>
                   </li>
                 }</For>
               </ol>

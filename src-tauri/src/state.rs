@@ -1,10 +1,12 @@
 extern crate directories;
+use crate::entry;
 use crate::entry::Entry;
+use crate::openai::SentenceExampleQuery;
 use anyhow::{anyhow, Ok, Result};
 use aws_sdk_polly::config::Config as AWSConfig;
 use aws_sdk_polly::config::Credentials;
-use aws_sdk_polly::Client;
 use aws_sdk_polly::operation::synthesize_speech::SynthesizeSpeechError;
+use aws_sdk_polly::Client;
 use aws_types::region::Region;
 use directories::{BaseDirs, ProjectDirs, UserDirs};
 use glob::glob;
@@ -79,6 +81,8 @@ impl State {
         let conn = Connection::open(workspace_path.join("cache.db"))?;
 
         conn.execute("CREATE TABLE IF NOT EXISTS vocabulary ( query TEXT UNIQUE, content TEXT NOT NULL, timestamp INT NOT NULL);", ())?;
+        conn.execute("CREATE TABLE IF NOT EXISTS openai_usage (  id INTEGER PRIMARY KEY, prompt_tokens INTEGER NOT NULL,completion_tokens INTEGER NOT NULL);", ())?;
+        conn.execute("INSERT INTO openai_usage (id, prompt_tokens, completion_tokens) SELECT 1, 0, 0 WHERE NOT EXISTS (SELECT 1 FROM openai_usage);", ())?;
 
         conn.execute(
             "CREATE INDEX IF NOT EXISTS query_index ON vocabulary (query COLLATE NOCASE);",
@@ -103,12 +107,12 @@ impl State {
         conn.execute("DELETE FROM vocabulary WHERE query = ?1;", &[query])?;
 
         let slug = slugify!(query, separator = "_");
-        let new_filename = format!("{}.json", slug.as_str());
+        let filename = format!("{}.json", slug.as_str());
 
-        let path = workspace_vocabulary_path_buf.join(&new_filename);
+        let path = workspace_vocabulary_path_buf.join(&filename);
         std::fs::remove_file(path.as_path())?;
 
-        Ok(new_filename)
+        Ok(filename)
     }
 
     pub async fn say(&self, content: &str) -> Result<String> {
@@ -169,24 +173,20 @@ impl State {
                     return Err(anyhow!("No error message found"));
                 }
             }
-        }
-        else {
+        } else {
             return Err(anyhow!("No polly config found"));
         }
     }
 
     pub async fn search(&self, query: &str) -> Result<String> {
         let workspace_path = Path::new(self.workspace_path.as_str());
-
         let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
 
         if !workspace_vocabulary_path_buf.exists() {
             mkdir_p(&workspace_vocabulary_path_buf)?;
         }
 
-        print!("search in {:?}", &self.target_lang);
-
-        let res = crate::openai::search(
+        let (prompt, completion, res) = crate::openai::search(
             query.to_lowercase().as_str(),
             self.openai_token.as_str(),
             &self.target_lang,
@@ -216,57 +216,77 @@ impl State {
             .as_secs();
 
         conn.execute("INSERT OR REPLACE INTO vocabulary(query, content, timestamp) SELECT ?1, ?2, ?3 WHERE NOT EXISTS (SELECT * FROM vocabulary WHERE query = ?4 AND timestamp >= ?5);", (query.to_lowercase(), serialized.clone(), seconds, query.to_lowercase(), seconds)).unwrap();
+        conn.execute("UPDATE openai_usage SET prompt_tokens = prompt_tokens + ?1, completion_tokens = completion_tokens + ?2
+        WHERE id = (SELECT MIN(id) FROM openai_usage)
+          AND EXISTS (SELECT 1 FROM openai_usage);", (prompt, completion))?;
 
         Ok(serialized)
     }
 
-    /*  pub async fn search_example_sentences(&self, query: &crate::openai::SentenceExampleQuery) -> Result<String> {
-            let workspace_path = Path::new(self.workspace_path.as_str());
+    pub async fn search_example_sentences(&self, entry_str: &str, meaning: &str) -> Result<String> {
+        let mut entry: crate::entry::Entry = serde_json::from_str(entry_str)?;
+        let workspace_path = Path::new(self.workspace_path.as_str());
 
-            let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
+        let conn = Connection::open(workspace_path.join("cache.db"))?;
 
-            if !workspace_vocabulary_path_buf.exists() {
-                mkdir_p(&workspace_vocabulary_path_buf)?;
+        for e in &mut entry.meanings {
+            for m in &mut e.meanings {
+                for t in &m.meaning {
+                    if let crate::entry::Lang::English(eng_meaning) = t {
+                        if eng_meaning == meaning {
+                            let query = crate::openai::SentenceExampleQuery {
+                                query: entry.query.clone(),
+                                meaning: eng_meaning.clone(),
+                            };
+
+                            let (prompt, completion, res) = crate::openai::search_example_sentences(
+                                &query,
+                                self.openai_token.as_str(),
+                                &self.target_lang,
+                            )
+                            .await?;
+                            println!("expand new sentences {:?}", &res);
+
+                            m.examples.extend(res);
+
+                            conn.execute("UPDATE openai_usage SET prompt_tokens = prompt_tokens + ?1, completion_tokens = completion_tokens + ?2
+                            WHERE id = (SELECT MIN(id) FROM openai_usage)
+                              AND EXISTS (SELECT 1 FROM openai_usage);", (prompt, completion))?;
+                            break;
+                        }
+                    }
+                }
             }
-
-            print!("search in {:?}", &self.target_lang);
-
-            let res = crate::openai::search_example_sentences(
-                query,
-                self.openai_token.as_str(),
-                &self.target_lang,
-            )
-            .await?;
-
-            let slug = slugify!(query.query.as_str(), separator = "_");
-
-            let new_filename = format!("{}.json", slug.as_str());
-
-            //test
-
-            let serialized = serde_json::to_string_pretty(&res)?;
-
-            let path = workspace_vocabulary_path_buf.join(&new_filename);
-
-            let mut file = File::create(path.as_path())?;
-
-            file.write_all(serialized.as_bytes())?;
-
-            let conn = Connection::open(workspace_path.join("cache.db"))?;
-
-            let seconds = std::fs::metadata(path.as_path())
-                .unwrap()
-                .modified()
-                .unwrap()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
-
-            conn.execute("INSERT OR REPLACE INTO vocabulary(query, content, timestamp) SELECT ?1, ?2, ?3 WHERE NOT EXISTS (SELECT * FROM vocabulary WHERE query = ?4 AND timestamp >= ?5);", (query.to_lowercase(), serialized.clone(), seconds, query.to_lowercase(), seconds)).unwrap();
-
-            Ok(serialized)
         }
-    */
+
+
+        let workspace_vocabulary_path_buf =
+            PathBuf::new().join(workspace_path).join("vocabulary");
+
+        let slug = slugify!(entry.query.as_str(), separator = "_");
+
+        let new_filename: String = format!("{}.json", slug.as_str());
+
+        let serialized = serde_json::to_string_pretty(&mut entry)?;
+
+        let path = workspace_vocabulary_path_buf.join(&new_filename);
+
+        let mut file = File::create(path.as_path())?;
+
+        file.write_all(serialized.as_bytes())?;
+
+        let seconds = std::fs::metadata(path.as_path())
+            .unwrap()
+            .modified()
+            .unwrap()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        conn.execute("INSERT OR REPLACE INTO vocabulary(query, content, timestamp) SELECT ?1, ?2, ?3 WHERE NOT EXISTS (SELECT * FROM vocabulary WHERE query = ?4 AND timestamp >= ?5);", (entry.query.to_lowercase(), serialized.clone(), seconds, entry.query.to_lowercase(), seconds)).unwrap();
+
+        Ok(serialized)
+    }
 
     pub fn load_config(&mut self) -> Result<Config> {
         if let Some(proj_dirs) = ProjectDirs::from("com", "Epiphany", "Broca") {
@@ -387,6 +407,8 @@ impl State {
             mkdir_p(&workspace_audio_path_buf)?;
         }
 
+        self.init_db()?;
+
         let conn = Connection::open(workspace_path.join("cache.db"))?;
 
         for entry in glob(
@@ -415,6 +437,22 @@ impl State {
         }
         let results = self.fetch_all_words();
         results
+    }
+
+    pub fn load_usage(&self) -> Result<[i64;2]> {
+        let workspace_path = Path::new(self.workspace_path.as_str());
+        let conn = Connection::open(workspace_path.join("cache.db"))?;
+
+        let content = conn
+        .query_row(
+            "SELECT prompt_tokens, completion_tokens FROM openai_usage WHERE id = (SELECT MIN(id) FROM openai_usage)
+            AND EXISTS (SELECT 1 FROM openai_usage);",
+            (),
+            |row| rusqlite::Result::Ok([row.get(0).unwrap(), row.get(1).unwrap()]),
+        )
+        .unwrap();
+
+        Ok(content)
     }
 
     pub fn first_time_setup(

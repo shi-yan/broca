@@ -1,9 +1,9 @@
 [package]
 name = "broca"
-version = "0.0.0"
-description = "A Tauri App"
+version = "0.0.1"
+description = "A ChatGPT based dictionary + vocabulary book"
 authors = ["Shi Yan"]
-license = ""
+license = "MIT"
 repository = ""
 edition = "2021"
 

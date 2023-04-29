@@ -1,4 +1,3 @@
-import logo from './logo.svg';
 import styles from './ConfigView.module.css';
 import { render } from 'solid-js/web';
 import { useAppContext } from './AppContext';

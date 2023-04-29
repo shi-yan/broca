@@ -1,7 +1,7 @@
 {
-  "name": "vite-template-solid",
-  "version": "0.0.0",
-  "description": "",
+  "name": "broca",
+  "version": "0.0.1",
+  "description": "A ChatGPT powered dictionary + vocabulary book",
   "scripts": {
     "start": "vite",
     "dev": "vite",

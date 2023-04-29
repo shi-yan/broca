@@ -1,13 +1,11 @@
-import logo from './logo.svg';
 import styles from './SearchArea.module.css';
 import { useAppContext } from "./AppContext";
 import { tauri_invoke, tauri_dialog } from './tauri';
-import loading from './loading.gif'
+
 import { createSignal } from 'solid-js';
 
 function SearchArea(prop) {
-    const { configured, narrowDown, allItems, setAllItems, detail , error} = useAppContext();
-    const [isLoading, setIsLoading] = createSignal(false);
+    const { configured, narrowDown, allItems, setAllItems, detail , error, loading} = useAppContext();
 
     let timeout = null;
 
@@ -24,7 +22,7 @@ function SearchArea(prop) {
     async function onKeyDown(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
-            setIsLoading(true);
+            loading.setIsLoading(true);
             const query = e.target.value;
             console.log(query);
             setTimeout(async () => {
@@ -35,11 +33,11 @@ function SearchArea(prop) {
 
                     detail.setDetail(parsed);
                     setAllItems([parsed.query]);
-                    setIsLoading(false);
+                    loading.dismissLoading(false);
                 }
                 catch (err) {
                     console.log(err);
-                    setIsLoading(false);
+                    loading.dismissLoading(false);
                     error.setError(err);
                 }
             }, 100);
@@ -49,12 +47,6 @@ function SearchArea(prop) {
 
     return (
         <div class={styles.SearchArea}>
-            <Show when={isLoading()}>
-                <div class={styles.Loading} >
-                    <p>ChatGPT is Working ...</p>
-                    <img src={loading} style="width:320px;" />
-                </div>
-            </Show>
             <input type="text" onKeyDown={onKeyDown} onInput={onInput} />
         </div>
     );

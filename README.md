@@ -46,7 +46,8 @@ cargo tauri dev
 ```
 
 ## Todos
-* Click to load more example sentences
 * GPT Usage Gauge
 * Linux / Win support
 * Select Voice
+* More Languages
+* Solve the issue with block_on

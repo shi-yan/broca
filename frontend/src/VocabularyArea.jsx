@@ -1,4 +1,3 @@
-import logo from './logo.svg';
 import styles from './VocabularyArea.module.css';
 import { createSignal, Show, Switch, Match, For, onMount,createEffect, catchError } from "solid-js";
 import { useAppContext } from './AppContext';
@@ -9,7 +8,7 @@ function VocabularyArea() {
   let dummyContainer;
   let visibleList;
 
-  const {configured, narrowDown, allItems, setAllItems, detail} = useAppContext();
+  const { configured, narrowDown, allItems, setAllItems, detail, showConfig,error, loading, usage } = useAppContext();
 
   const itemHeight = 32;
   const nodePadding = 10;
@@ -48,6 +47,7 @@ function VocabularyArea() {
       const words = await tauri_invoke('scan_vocabulary');
       console.log("scan vocabulary", words);
       setAllItems(words);
+      usage.refreshUsage();
     }
     catch(err) {
       console.log(err);

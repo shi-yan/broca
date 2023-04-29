@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use reqwest;
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
+use tauri::utils::config::parse;
 use std::result::Result::Ok;
 
 use crate::entry::{self, Meanings};
@@ -155,7 +156,6 @@ fn sample_spanish_query() -> String {
     res
 }
 
-
 fn sample_japanese_query() -> String {
     let e = entry::Entry {
         query: "sentence".to_string(),
@@ -197,7 +197,6 @@ fn sample_japanese_query() -> String {
 
     res
 }
-
 
 fn sample_korean_query() -> String {
     let e = entry::Entry {
@@ -367,16 +366,15 @@ fn sample_portuguese_query() -> String {
     res
 }
 
-fn assemble_query(query: &str, target_lang:&state::TargetLang ) -> String {
-
+fn assemble_query(query: &str, target_lang: &state::TargetLang) -> String {
     let language_str = match target_lang {
-        state::TargetLang::Chinese => { "Chinese" }
-        state::TargetLang::Spanish => { "Spanish" }
-        state::TargetLang::Japanese => { "Japanese" }
-        state::TargetLang::Korean => { "Korean" }
-        state::TargetLang::German => { "German" }
-        state::TargetLang::French => { "French" }
-        state::TargetLang::Portuguese => {"Portuguese"}
+        state::TargetLang::Chinese => "Chinese",
+        state::TargetLang::Spanish => "Spanish",
+        state::TargetLang::Japanese => "Japanese",
+        state::TargetLang::Korean => "Korean",
+        state::TargetLang::German => "German",
+        state::TargetLang::French => "French",
+        state::TargetLang::Portuguese => "Portuguese",
     };
 
     let query = ChatGPTQuery {
@@ -411,7 +409,11 @@ fn assemble_query(query: &str, target_lang:&state::TargetLang ) -> String {
     res
 }
 
-pub async fn search(query: &str, auth_token: &str, target_lang:&state::TargetLang) -> Result<entry::Entry> {
+pub async fn search(
+    query: &str,
+    auth_token: &str,
+    target_lang: &state::TargetLang,
+) -> Result<(i64,i64,entry::Entry)> {
     let bearer_auth = format!("Bearer {}", auth_token);
 
     let data = assemble_query(query, target_lang);
@@ -439,10 +441,10 @@ pub async fn search(query: &str, auth_token: &str, target_lang:&state::TargetLan
                     match serde_json::from_str(&parsed.choices[0].message.content) {
                         Ok(meanings) => {
                             println!("{:?}", meanings);
-                            return Ok(entry::Entry {
+                            return Ok((parsed.usage.prompt_tokens, parsed.usage.completion_tokens, entry::Entry {
                                 query: query.to_string(),
                                 meanings: meanings,
-                            });
+                            }));
                         }
                         Err(message) => {
                             return Err(anyhow!(format!(
@@ -481,20 +483,136 @@ pub async fn search(query: &str, auth_token: &str, target_lang:&state::TargetLan
 
 pub struct SentenceExampleQuery {
     pub query: String,
-    pub meaning: String,    
-    pub examples: Vec<Vec<entry::Lang>>
+    pub meaning: String
 }
- 
-fn assemble_sentence_example_query(sentence_query: &SentenceExampleQuery, target_lang:&state::TargetLang ) -> String {
 
+fn assemble_sentence_example_query(
+    sentence_query: &SentenceExampleQuery,
+    target_lang: &state::TargetLang,
+) -> String {
     let language_str = match target_lang {
-        state::TargetLang::Chinese => { "Chinese" }
-        state::TargetLang::Spanish => { "Spanish" }
-        state::TargetLang::Japanese => { "Japanese" }
-        state::TargetLang::Korean => { "Korean" }
-        state::TargetLang::German => { "German" }
-        state::TargetLang::French => { "French" }
-        state::TargetLang::Portuguese => {"Portuguese"}
+        state::TargetLang::Chinese => "Chinese",
+        state::TargetLang::Spanish => "Spanish",
+        state::TargetLang::Japanese => "Japanese",
+        state::TargetLang::Korean => "Korean",
+        state::TargetLang::German => "German",
+        state::TargetLang::French => "French",
+        state::TargetLang::Portuguese => "Portuguese",
+    };
+
+    let sentence_sample = match target_lang {
+        state::TargetLang::Chinese => {
+            vec![
+                vec![
+                    entry::Lang::English("Ten army officers were sentenced to death.".to_string()),
+                    entry::Lang::Chinese("十位军官被判处死刑。".to_string()),
+                ],
+                vec![
+                    entry::Lang::English(
+                        "The judge sentenced her to six months in jail.".to_string(),
+                    ),
+                    entry::Lang::Chinese("法官判她入狱六个月。".to_string()),
+                ],
+            ]
+        }
+        state::TargetLang::Spanish => {
+            vec![
+                vec![
+                    entry::Lang::English("Ten army officers were sentenced to death.".to_string()),
+                    entry::Lang::Chinese(
+                        "Diez oficiales del ejército fueron condenados a muerte.".to_string(),
+                    ),
+                ],
+                vec![
+                    entry::Lang::English(
+                        "The judge sentenced her to six months in jail.".to_string(),
+                    ),
+                    entry::Lang::Spanish(
+                        "La jueza la sentenció a seis meses de cárcel.".to_string(),
+                    ),
+                ],
+            ]
+        }
+        state::TargetLang::Japanese => {
+            vec![
+                vec![
+                    entry::Lang::English("Ten army officers were sentenced to death.".to_string()),
+                    entry::Lang::Japanese("陸軍将校10人が死刑を宣告された。".to_string()),
+                ],
+                vec![
+                    entry::Lang::English(
+                        "The judge sentenced her to six months in jail.".to_string(),
+                    ),
+                    entry::Lang::Japanese("裁判官は彼女に 6 か月の禁錮刑を宣告した。".to_string()),
+                ],
+            ]
+        }
+        state::TargetLang::Korean => {
+            vec![
+                vec![
+                    entry::Lang::English("Ten army officers were sentenced to death.".to_string()),
+                    entry::Lang::Korean("육군 장교 10명이 사형을 선고받았다.".to_string()),
+                ],
+                vec![
+                    entry::Lang::English(
+                        "The judge sentenced her to six months in jail.".to_string(),
+                    ),
+                    entry::Lang::Korean("판사는 그녀에게 6개월의 징역형을 선고했다.".to_string()),
+                ],
+            ]
+        }
+        state::TargetLang::German => {
+            vec![
+                vec![
+                    entry::Lang::English("Ten army officers were sentenced to death.".to_string()),
+                    entry::Lang::German(
+                        "Zehn Offiziere der Armee wurden zum Tode verurteilt.".to_string(),
+                    ),
+                ],
+                vec![
+                    entry::Lang::English(
+                        "The judge sentenced her to six months in jail.".to_string(),
+                    ),
+                    entry::Lang::German(
+                        "Der Richter verurteilte sie zu einer sechsmonatigen Haft.".to_string(),
+                    ),
+                ],
+            ]
+        }
+        state::TargetLang::French => {
+            vec![
+                vec![
+                    entry::Lang::English("Ten army officers were sentenced to death.".to_string()),
+                    entry::Lang::French(
+                        "Dix officiers militaires ont été condamnés à mort.".to_string(),
+                    ),
+                ],
+                vec![
+                    entry::Lang::English(
+                        "The judge sentenced her to six months in jail.".to_string(),
+                    ),
+                    entry::Lang::French(
+                        "Le juge l'a condamnée à six mois d'emprisonnement.".to_string(),
+                    ),
+                ],
+            ]
+        }
+        state::TargetLang::Portuguese => {
+            vec![
+                vec![
+                    entry::Lang::English("Ten army officers were sentenced to death.".to_string()),
+                    entry::Lang::Portuguese("Dez militares foram condenados à morte.".to_string()),
+                ],
+                vec![
+                    entry::Lang::English(
+                        "The judge sentenced her to six months in jail.".to_string(),
+                    ),
+                    entry::Lang::Portuguese(
+                        "O juiz a sentenciou a seis meses de prisão.".to_string(),
+                    ),
+                ],
+            ]
+        }
     };
 
     let query = ChatGPTQuery {
@@ -505,15 +623,15 @@ fn assemble_sentence_example_query(sentence_query: &SentenceExampleQuery, target
         },
         Message {
             role: "user".to_string(),
-            content: format!("Query: \"{}\" Meaning: \"{}\"]", sentence_query.query, sentence_query.meaning)
+            content: format!("Query: \"sentence\" Meaning: \"Declare the punishment decided for (an offender).\"]")
           },
          Message        {
             role: "assistant".to_string(),
-            content:serde_json::to_string(&sentence_query.examples).unwrap()
-        } ,
+            content:serde_json::to_string(&sentence_sample).unwrap()
+        },
         Message     {
             role: "user".to_string(),
-            content: "More alternative examples?".to_string()
+            content: format!("Query: \"{}\" Meaning: \"{}\"]", sentence_query.query, sentence_query.meaning)
           }],
     };
     let res = serde_json::to_string(&query).unwrap();
@@ -521,8 +639,11 @@ fn assemble_sentence_example_query(sentence_query: &SentenceExampleQuery, target
     res
 }
 
-
-pub async fn search_example_sentences(search_query: &SentenceExampleQuery, auth_token: &str, target_lang:&state::TargetLang) -> Result<Vec<Vec<entry::Lang>>> {
+pub async fn search_example_sentences(
+    search_query: &SentenceExampleQuery,
+    auth_token: &str,
+    target_lang: &state::TargetLang,
+) -> Result<(i64, i64, Vec<Vec<entry::Lang>>)> {
     let bearer_auth = format!("Bearer {}", auth_token);
 
     let data = assemble_sentence_example_query(search_query, target_lang);
@@ -546,12 +667,11 @@ pub async fn search_example_sentences(search_query: &SentenceExampleQuery, auth_
                 Ok(parsed) => {
                     println!("🔥 Success!");
                     println!("💬 Response: {}", parsed.choices[0].message.content);
-
                     match serde_json::from_str(&parsed.choices[0].message.content) {
                         Ok(meanings) => {
                             println!("{:?}", meanings);
-                            let result : Vec<Vec<entry::Lang>> = meanings;
-                            return Ok(result);
+                            let result: Vec<Vec<entry::Lang>> = meanings;
+                            return Ok((parsed.usage.prompt_tokens, parsed.usage.completion_tokens, result));
                         }
                         Err(message) => {
                             return Err(anyhow!(format!(
