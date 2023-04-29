@@ -46,7 +46,6 @@ cargo tauri dev
 ```
 
 ## Todos
-* GPT Usage Gauge
 * Linux / Win support
 * Select Voice
 * More Languages
