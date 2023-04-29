@@ -5,7 +5,7 @@ import { tauri_invoke, tauri_dialog } from './tauri';
 
 function DetailArea() {
 
-  const { configured, narrowDown, allItems, setAllItems, detail } = useAppContext();
+  const { configured, narrowDown, allItems, setAllItems, detail , error} = useAppContext();
 
   async function onDelete(query) {
     try {
@@ -14,6 +14,7 @@ function DetailArea() {
       narrowDown();
     } catch (err) {
       console.log(err);
+      error.setError(err);
     }
   }
 
@@ -25,7 +26,12 @@ function DetailArea() {
       new Audio(audioUrl).play();
     } catch (err) {
       console.log(err);
+      error.setError(err);
     }
+  }
+
+  async function onGenerateMore(query, meaning) {
+    console.log("generate more", query, meaning);
   }
 
   return (
@@ -62,7 +68,9 @@ function DetailArea() {
                       }</For>
                     </ul>
                     <p>Examples</p>
+                    <ol type="a">
                     <For each={m.examples}>{(example, i) =>
+                      <li>
                       <ul>
                         <For each={example}>{(ee, i) =>
                           <li> {ee[Object.keys(ee)[0]]}
@@ -73,8 +81,10 @@ function DetailArea() {
                             </Show>
                           </li>
                         }</For>
-                      </ul>
+                      </ul></li>
                     }</For>
+                    </ol>
+                    <button class={styles.GenerateMore} onClick={(e) => { onGenerateMore(detail.detail().query, m.meaning) }}>Generate More ...</button>
                   </li>
                 }</For>
               </ol>

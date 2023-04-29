@@ -54,6 +54,25 @@ html, body {
   flex-shrink: 0;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+/* width */
+::-webkit-scrollbar {
+  width: 10px;
 }
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: antiquewhite;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: dimgray;
+  border-radius: 5px;
+
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: burlywood;
+  border-radius: 5px;
+}
+
+

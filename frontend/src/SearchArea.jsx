@@ -6,10 +6,8 @@ import loading from './loading.gif'
 import { createSignal } from 'solid-js';
 
 function SearchArea(prop) {
-    const { configured, narrowDown, allItems, setAllItems, detail } = useAppContext();
+    const { configured, narrowDown, allItems, setAllItems, detail , error} = useAppContext();
     const [isLoading, setIsLoading] = createSignal(false);
-
-    const [error, setError] = createSignal(null);
 
     let timeout = null;
 
@@ -21,10 +19,6 @@ function SearchArea(prop) {
 
         timeout = setTimeout((
         ) => { narrowDown(input); }, 100);
-    }
-
-    function onDismissError(e) {
-        setError(null);
     }
 
     async function onKeyDown(e) {
@@ -46,7 +40,7 @@ function SearchArea(prop) {
                 catch (err) {
                     console.log(err);
                     setIsLoading(false);
-                    setError(err);
+                    error.setError(err);
                 }
             }, 100);
 
@@ -59,12 +53,6 @@ function SearchArea(prop) {
                 <div class={styles.Loading} >
                     <p>ChatGPT is Working ...</p>
                     <img src={loading} style="width:320px;" />
-                </div>
-            </Show>
-            <Show when={error()}>
-                <div class={styles.Error} >
-                    <p>Error: {error()}</p>
-                    <button onClick={onDismissError}>OK</button>
                 </div>
             </Show>
             <input type="text" onKeyDown={onKeyDown} onInput={onInput} />

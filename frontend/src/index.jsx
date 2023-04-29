@@ -14,7 +14,7 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
 
 function Broca() {
   return (<AppContextProvider>
-    <App />
+    <App class="scroll scroll-6" />
   </AppContextProvider>)
 }
 

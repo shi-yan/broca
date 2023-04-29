@@ -4,6 +4,7 @@ use anyhow::{anyhow, Ok, Result};
 use aws_sdk_polly::config::Config as AWSConfig;
 use aws_sdk_polly::config::Credentials;
 use aws_sdk_polly::Client;
+use aws_sdk_polly::operation::synthesize_speech::SynthesizeSpeechError;
 use aws_types::region::Region;
 use directories::{BaseDirs, ProjectDirs, UserDirs};
 use glob::glob;
@@ -125,7 +126,13 @@ impl State {
         }
 
         if let Some(polly_config) = &self.polly_config {
-            let creds = Credentials::new(&polly_config.aws_key, &polly_config.aws_secret, None, None, "self");
+            let creds = Credentials::new(
+                &polly_config.aws_key,
+                &polly_config.aws_secret,
+                None,
+                None,
+                "self",
+            );
 
             let conf = aws_sdk_polly::config::Config::builder()
                 .credentials_provider(creds)
@@ -134,7 +141,7 @@ impl State {
 
             let client = Client::from_conf(conf);
 
-            let audio = client
+            match client
                 .synthesize_speech()
                 .engine(aws_sdk_polly::types::Engine::Neural)
                 .output_format(aws_sdk_polly::types::OutputFormat::Mp3)
@@ -142,16 +149,29 @@ impl State {
                 .language_code(aws_sdk_polly::types::LanguageCode::EnAu)
                 .voice_id(aws_sdk_polly::types::VoiceId::Olivia)
                 .send()
-                .await?;
-            let buf = audio.audio_stream.collect().await?;
-            let mut file = std::fs::File::create(path.to_str().unwrap())?;
-            file.write_all(&buf.to_vec())?;
-            file.flush()?;
-            println!("Generated audio {}", path.to_str().unwrap());
+                .await
+            {
+                core::result::Result::Ok(audio) => {
+                    let buf = audio.audio_stream.collect().await?;
+                    let mut file = std::fs::File::create(path.to_str().unwrap())?;
+                    file.write_all(&buf.to_vec())?;
+                    file.flush()?;
+                    println!("Generated audio {}", path.to_str().unwrap());
 
-            return Ok(String::from(path.to_str().unwrap()));
-        } else {
-            return Err(anyhow!("Polly is not configured!".to_string()));
+                    return Ok(String::from(path.to_str().unwrap()));
+                }
+                Err(message) => {
+                    let service_error = message.into_service_error();
+                    if let Some(message) = service_error.meta().message() {
+                        println!("Error: {}", message.to_string());
+                        return Err(anyhow!(message.to_string()));
+                    }
+                    return Err(anyhow!("No error message found"));
+                }
+            }
+        }
+        else {
+            return Err(anyhow!("No polly config found"));
         }
     }
 
@@ -200,54 +220,53 @@ impl State {
         Ok(serialized)
     }
 
-   /*  pub async fn search_example_sentences(&self, query: &crate::openai::SentenceExampleQuery) -> Result<String> {
-        let workspace_path = Path::new(self.workspace_path.as_str());
+    /*  pub async fn search_example_sentences(&self, query: &crate::openai::SentenceExampleQuery) -> Result<String> {
+            let workspace_path = Path::new(self.workspace_path.as_str());
 
-        let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
+            let workspace_vocabulary_path_buf = PathBuf::new().join(workspace_path).join("vocabulary");
 
-        if !workspace_vocabulary_path_buf.exists() {
-            mkdir_p(&workspace_vocabulary_path_buf)?;
+            if !workspace_vocabulary_path_buf.exists() {
+                mkdir_p(&workspace_vocabulary_path_buf)?;
+            }
+
+            print!("search in {:?}", &self.target_lang);
+
+            let res = crate::openai::search_example_sentences(
+                query,
+                self.openai_token.as_str(),
+                &self.target_lang,
+            )
+            .await?;
+
+            let slug = slugify!(query.query.as_str(), separator = "_");
+
+            let new_filename = format!("{}.json", slug.as_str());
+
+            //test
+
+            let serialized = serde_json::to_string_pretty(&res)?;
+
+            let path = workspace_vocabulary_path_buf.join(&new_filename);
+
+            let mut file = File::create(path.as_path())?;
+
+            file.write_all(serialized.as_bytes())?;
+
+            let conn = Connection::open(workspace_path.join("cache.db"))?;
+
+            let seconds = std::fs::metadata(path.as_path())
+                .unwrap()
+                .modified()
+                .unwrap()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+
+            conn.execute("INSERT OR REPLACE INTO vocabulary(query, content, timestamp) SELECT ?1, ?2, ?3 WHERE NOT EXISTS (SELECT * FROM vocabulary WHERE query = ?4 AND timestamp >= ?5);", (query.to_lowercase(), serialized.clone(), seconds, query.to_lowercase(), seconds)).unwrap();
+
+            Ok(serialized)
         }
-
-        print!("search in {:?}", &self.target_lang);
-
-        let res = crate::openai::search_example_sentences(
-            query,
-            self.openai_token.as_str(),
-            &self.target_lang,
-        )
-        .await?;
-
-        let slug = slugify!(query.query.as_str(), separator = "_");
-
-        let new_filename = format!("{}.json", slug.as_str());
-
-        //test
-
-        let serialized = serde_json::to_string_pretty(&res)?;
-
-        let path = workspace_vocabulary_path_buf.join(&new_filename);
-
-        let mut file = File::create(path.as_path())?;
-
-        file.write_all(serialized.as_bytes())?;
-
-        let conn = Connection::open(workspace_path.join("cache.db"))?;
-
-        let seconds = std::fs::metadata(path.as_path())
-            .unwrap()
-            .modified()
-            .unwrap()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
-        conn.execute("INSERT OR REPLACE INTO vocabulary(query, content, timestamp) SELECT ?1, ?2, ?3 WHERE NOT EXISTS (SELECT * FROM vocabulary WHERE query = ?4 AND timestamp >= ?5);", (query.to_lowercase(), serialized.clone(), seconds, query.to_lowercase(), seconds)).unwrap();
-
-        Ok(serialized)
-    }
-*/
-    
+    */
 
     pub fn load_config(&mut self) -> Result<Config> {
         if let Some(proj_dirs) = ProjectDirs::from("com", "Epiphany", "Broca") {
@@ -404,7 +423,7 @@ impl State {
         openai_token: &str,
         target_lang: &str,
         aws_key: Option<&str>,
-        aws_secret: Option<&str>
+        aws_secret: Option<&str>,
     ) -> Result<Config> {
         if let Some(proj_dirs) = ProjectDirs::from("com", "Epiphany", "Broca") {
             let config_dir_path = proj_dirs.config_dir();
@@ -426,12 +445,12 @@ impl State {
                     &_ => return Err(anyhow!("Unknown Target Language.")),
                 },
                 polly_config: if aws_key.is_some() && aws_secret.is_some() {
-                    Some( PollyConfig{
+                    Some(PollyConfig {
                         aws_key: aws_key.unwrap().to_string(),
                         aws_secret: aws_secret.unwrap().to_string(),
-                        voice_id: "Olivia".to_string()
+                        voice_id: "Olivia".to_string(),
                     })
-                }else {
+                } else {
                     None
                 },
             };
@@ -476,7 +495,6 @@ impl State {
             }
 
             self.init_db()?;
-
 
             return Ok(config.clone());
         }

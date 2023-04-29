@@ -79,7 +79,8 @@ function ConfigView(prop) {
         else {
             try {
                 const workspaceData = await tauri_invoke('first_time_setup', { workspacePath: vocabularyFolder(), openaiToken: openaiInput.value, targetLang:targetLang.value, awsKey:awsKey.value.length>0?awsKey.value:null, awsSecret:awsSecret.value.length>0?awsSecret.value:null   });
-                configured.setConfigured(true);
+                configured.setConfigured(workspaceData);
+                showConfig.setShowConfig(false);
                 setError(null);
             } catch (e) {
                 console.log(e);

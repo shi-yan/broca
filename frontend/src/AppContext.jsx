@@ -8,6 +8,8 @@ export function AppContextProvider(props) {
   const [configured, setConfigured] = createSignal(null);
   const [allItems, setAllItems] = createSignal([]);
   const [detail, setDetail] = createSignal({});
+  const [error, setError] = createSignal(null);
+
 
   async function narrowDown(query) {
     console.log(query);
@@ -32,7 +34,7 @@ export function AppContextProvider(props) {
   });
 
   return (
-    <AppContext.Provider value={{ configured: { configured, setConfigured }, narrowDown, allItems, setAllItems, detail: { detail, setDetail }, showConfig: {showConfig, setShowConfig} }}>
+    <AppContext.Provider value={{ configured: { configured, setConfigured }, narrowDown, allItems, setAllItems, detail: { detail, setDetail }, showConfig: {showConfig, setShowConfig}, error: {error, setError} }}>
       {props.children}
     </AppContext.Provider>
   );
