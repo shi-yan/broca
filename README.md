@@ -2,7 +2,7 @@
 
 A ChatGPT powered dictionary (English <-> Chinese|Spanish|Japanese|Korean|German|French|Portuguese) + vocabulary book
 
-https://user-images.githubusercontent.com/326807/233854967-a3ec9120-b6da-46e2-8aaf-b1bac308c877.mp4
+https://user-images.githubusercontent.com/326807/235324780-2cb41230-e330-4bc1-b3c8-f57c1088b639.mp4
 
 ## Introduction
 
