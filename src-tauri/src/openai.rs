@@ -2,7 +2,6 @@ use anyhow::{anyhow, Result};
 use reqwest;
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
-use tauri::utils::config::parse;
 use std::result::Result::Ok;
 
 use crate::entry::{self, Meanings};

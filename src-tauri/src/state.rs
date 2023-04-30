@@ -170,7 +170,7 @@ impl State {
                         println!("Error: {}", message.to_string());
                         return Err(anyhow!(message.to_string()));
                     }
-                    return Err(anyhow!("No error message found"));
+                    return Err(anyhow!(service_error.to_string()));
                 }
             }
         } else {

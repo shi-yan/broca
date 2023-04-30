@@ -2,12 +2,10 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
-use std::sync::{Arc, RwLock};
-use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
-use tauri_plugin_positioner::Position;
-use tokio::runtime::Runtime;
 
-use std::rc::Rc;
+use futures::lock::Mutex;
+use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
+
 mod entry;
 mod openai;
 mod state;
@@ -15,8 +13,10 @@ mod win_ext;
 use win_ext::WindowExt;
 
 #[tauri::command]
-fn load_config(state: tauri::State<Arc<RwLock<state::State>>>) -> Result<state::Config, String> {
-    match state.write().unwrap().load_config() {
+async fn load_config(
+    state: tauri::State<'_, Mutex<state::State>>,
+) -> Result<state::Config, String> {
+    match state.lock().await.load_config() {
         Ok(content) => {
             return Ok(content);
         }
@@ -27,8 +27,8 @@ fn load_config(state: tauri::State<Arc<RwLock<state::State>>>) -> Result<state::
 }
 
 #[tauri::command]
-fn first_time_setup(
-    state: tauri::State<Arc<RwLock<state::State>>>,
+async fn first_time_setup(
+    state: tauri::State<'_, Mutex<state::State>>,
     workspace_path: &str,
     openai_token: &str,
     target_lang: &str,
@@ -39,7 +39,7 @@ fn first_time_setup(
         "{} {} {} {:?} {:?}",
         workspace_path, openai_token, target_lang, aws_key, aws_secret
     );
-    match state.write().unwrap().first_time_setup(
+    match state.lock().await.first_time_setup(
         workspace_path,
         openai_token,
         target_lang,
@@ -52,8 +52,10 @@ fn first_time_setup(
 }
 
 #[tauri::command]
-fn scan_vocabulary(state: tauri::State<Arc<RwLock<state::State>>>) -> Result<Vec<String>, String> {
-    match state.read().unwrap().scan_vocabulary() {
+async fn scan_vocabulary(
+    state: tauri::State<'_, Mutex<state::State>>,
+) -> Result<Vec<String>, String> {
+    match state.lock().await.scan_vocabulary() {
         Ok(content) => {
             return Ok(content);
         }
@@ -64,11 +66,11 @@ fn scan_vocabulary(state: tauri::State<Arc<RwLock<state::State>>>) -> Result<Vec
 }
 
 #[tauri::command]
-fn load_word(
-    state: tauri::State<Arc<RwLock<state::State>>>,
+async fn load_word(
+    state: tauri::State<'_, Mutex<state::State>>,
     query: &str,
 ) -> Result<String, String> {
-    match state.read().unwrap().load_word(query) {
+    match state.lock().await.load_word(query) {
         Ok(content) => {
             return Ok(content);
         }
@@ -79,11 +81,11 @@ fn load_word(
 }
 
 #[tauri::command]
-fn query_words(
-    state: tauri::State<Arc<RwLock<state::State>>>,
+async fn query_words(
+    state: tauri::State<'_, Mutex<state::State>>,
     query: &str,
 ) -> Result<Vec<String>, String> {
-    match state.read().unwrap().query_words(query) {
+    match state.lock().await.query_words(query) {
         Ok(content) => {
             return Ok(content);
         }
@@ -94,65 +96,65 @@ fn query_words(
 }
 
 #[tauri::command]
-fn search(state: tauri::State<Arc<RwLock<state::State>>>, query: &str) -> Result<String, String> {
-    let rt = Runtime::new().unwrap();
-
-    match rt.block_on(state.read().unwrap().search(query)) {
-        Ok(content) => {
-            return Ok(content);
-        }
-        Err(message) => {
-            return Err(message.to_string());
-        }
-    }
-}
-
-#[tauri::command]
-fn say(state: tauri::State<Arc<RwLock<state::State>>>, query: &str) -> Result<String, String> {
-    let rt = Runtime::new().unwrap();
-
-    match rt.block_on(state.read().unwrap().say(query)) {
-        Ok(content) => {
-            return Ok(content);
-        }
-        Err(message) => {
-            return Err(message.to_string());
-        }
-    }
-}
-
-#[tauri::command]
-fn delete_word(
-    state: tauri::State<Arc<RwLock<state::State>>>,
+async fn search(
+    state: tauri::State<'_, Mutex<state::State>>,
     query: &str,
 ) -> Result<String, String> {
-    if let Ok(content) = state.read().unwrap().delete_word(query) {
+    match state.lock().await.search(query).await {
+        Ok(content) => {
+            return Ok(content);
+        }
+        Err(message) => {
+            return Err(message.to_string());
+        }
+    }
+}
+
+#[tauri::command]
+async fn say(state: tauri::State<'_, Mutex<state::State>>, query: &str) -> Result<String, String> {
+    match state.lock().await.say(query).await {
+        Ok(content) => {
+            return Ok(content);
+        }
+        Err(message) => {
+            return Err(message.to_string());
+        }
+    }
+}
+
+#[tauri::command]
+async fn delete_word(
+    state: tauri::State<'_, Mutex<state::State>>,
+    query: &str,
+) -> Result<String, String> {
+    if let Ok(content) = state.lock().await.delete_word(query) {
         return Ok(content);
     }
     Err("Can't initialize workspace.".to_string())
 }
 
 #[tauri::command]
-fn fetch_all_words(state: tauri::State<Arc<RwLock<state::State>>>) -> Result<Vec<String>, String> {
-    if let Ok(content) = state.read().unwrap().fetch_all_words() {
+async fn fetch_all_words(
+    state: tauri::State<'_, Mutex<state::State>>,
+) -> Result<Vec<String>, String> {
+    if let Ok(content) = state.lock().await.fetch_all_words() {
         return Ok(content);
     }
     Err("Can't initialize workspace.".to_string())
 }
 
 #[tauri::command]
-fn generate_more_examples(
-    state: tauri::State<'_, Arc<RwLock<state::State>>>,
+async fn generate_more_examples(
+    state: tauri::State<'_, Mutex<state::State>>,
     entry: &str,
     meaning: &str,
 ) -> Result<String, String> {
-    let rt = Runtime::new().unwrap();
-
-    match rt.block_on(
-        state
-            .write()
-            .unwrap()
-            .search_example_sentences(entry, meaning)) {
+    match state
+        .lock()
+        .await
+        .search_example_sentences(entry, meaning)
+        .await
+    {
         Ok(content) => {
             return Ok(content);
         }
@@ -163,10 +165,8 @@ fn generate_more_examples(
 }
 
 #[tauri::command]
-fn load_usage(
-    state: tauri::State<'_, Arc<RwLock<state::State>>>
-) -> Result<[i64;2], String> {
-    if let Ok(content) = state.read().unwrap().load_usage() {
+async fn load_usage(state: tauri::State<'_, Mutex<state::State>>) -> Result<[i64; 2], String> {
+    if let Ok(content) = state.lock().await.load_usage() {
         return Ok(content);
     }
     Err("Can't load usage.".to_string())
@@ -174,9 +174,7 @@ fn load_usage(
 
 fn main() {
     tauri::Builder::default()
-        .manage(Arc::<RwLock<state::State>>::new(RwLock::new(
-            state::State::new(),
-        )))
+        .manage(Mutex::<state::State>::new(state::State::new()))
         .setup(|app| {
             let window = app.get_window("main").unwrap();
             // window.open_devtools();
