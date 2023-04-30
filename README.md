@@ -49,5 +49,3 @@ cargo tauri dev
 * Linux / Win support
 * Select Voice
 * More Languages
-* Solve the issue with block_on
-* validate AWS key

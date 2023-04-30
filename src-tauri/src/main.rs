@@ -4,7 +4,7 @@
 )]
 
 use futures::lock::Mutex;
-use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
+use tauri::Manager;
 
 mod entry;
 mod openai;

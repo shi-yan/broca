@@ -4,7 +4,7 @@ use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use std::result::Result::Ok;
 
-use crate::entry::{self, Meanings};
+use crate::entry::{self};
 use crate::state;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -50,25 +50,6 @@ pub struct Message {
 pub struct ChatGPTQuery {
     model: String,
     messages: Vec<Message>,
-}
-
-fn escape(src: &str) -> String {
-    use std::fmt::Write;
-    let mut escaped = String::with_capacity(src.len());
-    for c in src.chars() {
-        match c {
-            '\x08' => escaped += "\\b",
-            '\x0c' => escaped += "\\f",
-            '\n' => escaped += "\\n",
-            '\r' => escaped += "\\r",
-            '\t' => escaped += "\\t",
-            '"' => escaped += "\\\"",
-            '\\' => escaped += "\\",
-            _ => escaped.push(c),
-        }
-    }
-
-    escaped
 }
 
 fn sample_chinese_query() -> String {

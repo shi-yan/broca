@@ -1,16 +1,12 @@
 extern crate directories;
-use crate::entry;
 use crate::entry::Entry;
-use crate::openai::SentenceExampleQuery;
 use anyhow::{anyhow, Ok, Result};
-use aws_sdk_polly::config::Config as AWSConfig;
 use aws_sdk_polly::config::Credentials;
-use aws_sdk_polly::operation::synthesize_speech::SynthesizeSpeechError;
 use aws_sdk_polly::Client;
 use aws_types::region::Region;
-use directories::{BaseDirs, ProjectDirs, UserDirs};
+use directories::ProjectDirs;
 use glob::glob;
-use rusqlite::{Connection, Result as SqliteResult};
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use slugify::slugify;
 use std::fs::{create_dir_all, File};
@@ -362,19 +358,6 @@ impl State {
         }
 
         Ok(result)
-    }
-
-    pub fn to_asset_absolute_path(&mut self, image_filename: &str) -> Result<String> {
-        let workspace_assets_path_buf = PathBuf::new()
-            .join(self.workspace_path.as_str())
-            .join("assets");
-
-        Ok(String::from(
-            workspace_assets_path_buf
-                .join(image_filename)
-                .to_str()
-                .unwrap(),
-        ))
     }
 
     pub fn fetch_all_words(&self) -> Result<Vec<String>> {

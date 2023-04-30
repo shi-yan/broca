@@ -64,8 +64,29 @@ function ConfigView(prop) {
 
         let keyRegex = /^sk-[A-Za-z0-9]{48}$/g
 
+        if (awsKey.value.length > 0) {
+            let awsKeyRegex = /((?:ASIA|AKIA|AROA|AIDA)([A-Z0-7]{16}))/g
+
+            let match = awsKey.value.match(awsKeyRegex);
+
+            if (!match) {
+                setError('Invalid AWS Key.');
+            }
+        }
+
+        if (awsSecret.value.length > 0) {
+            let awsSecretRegex = /^[a-zA-Z0-9+/]{40}$/g
+
+            let match = awsSecret.value.match(awsSecretRegex);
+
+            if (!match) {
+                setError('Invalid AWS Secret.');
+            }
+        }
+
         let folder = vocabularyFolder();
         let openaiToken = openaiInput.value;
+
 
         let match = openaiToken.match(keyRegex);
 
